@@ -42,7 +42,7 @@ Authenticate developers before allowing access to repositories, reports, and ana
 
 ### Wireframe
 
-![Login](assets/login.png)
+![Login](assets/wireframe-imgs/login.png)
 
 ---
 
@@ -61,7 +61,7 @@ Provides an overview of previous analyses and acts as the application's landing 
 
 ### Wireframe
 
-![Dashboard](assets/dashboard.png)
+![Dashboard](assets/wireframe-imgs/dashboard.png)
 
 ---
 
@@ -83,7 +83,7 @@ Allows developers to submit a GitHub repository together with supporting documen
 
 ### Wireframe
 
-![New Analysis](assets/new-analysis.png)
+![New Analysis](assets/wireframe-imgs/new-analysis.png)
 
 ---
 
@@ -124,7 +124,7 @@ Generate Report
 
 ### Wireframe
 
-![Analysis Progress](assets/analysis-progress.png)
+![Analysis Progress](assets/wireframe-imgs/analysis-progress.png)
 
 ---
 
@@ -161,7 +161,7 @@ Business Rules
 
 ### Wireframe
 
-![Knowledge Graph](assets/knowledge-graph.png)
+![Knowledge Graph](assets/wireframe-imgs/knowledge-graph.png)
 
 ---
 
@@ -181,7 +181,7 @@ Displays all business logic vulnerabilities discovered during analysis.
 
 ### Wireframe
 
-![Security Report](assets/security-report.png)
+![Security Report](assets/wireframe-imgs/security-report.png)
 
 ---
 
