@@ -1,347 +1,506 @@
-# LogicFlow Guardian – Project Milestones
+# LogicFlow Guardian Development Roadmap
 
-## Overview
+## Purpose
 
-This document outlines the planned development roadmap for **LogicFlow Guardian**, an Agentic AI-powered Business Logic Security Testing Platform.
+This document defines the complete implementation roadmap for LogicFlow Guardian.
 
-The project is divided into five milestones, where each milestone builds upon the previous one and progressively transforms the application from a software design into a production-ready system.
+It describes every milestone required to build the platform from an empty repository to a production-ready Agentic AI Business Logic Security Testing Platform.
+
+This file is a high-level roadmap only.
+
+Detailed implementation instructions belong in `current-phase.md`.
+
+The AI assistant must never use this document alone to determine what to build. It must also read `current-phase.md`, which defines the currently active implementation phase.
 
 ---
 
-# Milestone 1 – Project Design & Architecture
+# Project Status
 
-## Objective
+Current Milestone:
 
-Establish the complete software design before implementation begins.
+Milestone 1 — Development Foundation
+
+Current Phase:
+
+Defined inside `current-phase.md`
+
+Overall Progress:
+
+0%
+
+---
+
+# Milestone 1 — Development Foundation
+
+## Goal
+
+Prepare a production-ready development environment and establish the project's architectural foundation.
+
+## Objectives
+
+- Configure Express.js (ms1)
+- Configure FastAPI (ms2)
+- Configure React frontend
+- Configure Docker
+- Configure Docker Compose
+- Configure PostgreSQL
+- Configure Neo4j
+- Configure NGINX
+- Configure GitHub Actions
+- Configure environment management
+- Configure logging
+- Configure project structure
 
 ## Deliverables
 
-### Repository Setup
+- All services start successfully
+- Local development works using Docker Compose
+- Health endpoints exist
+- Project builds without errors
 
-- GitHub monorepo
-- Folder structure
-- Branching strategy
-- Development conventions
+## Completion Criteria
 
-### Technical Documentation
+The complete project skeleton exists and every service starts successfully.
 
-- Technology stack
-- Software architecture
-- System workflow
-- Development roadmap
+Status:
 
-### Wireframes
+In Progress
 
-Low-fidelity wireframes for:
+---
 
+# Milestone 2 — Authentication & User Management
+
+## Goal
+
+Allow users to securely access LogicFlow Guardian.
+
+## Objectives
+
+- User database schema
+- Registration
 - Login
-- Dashboard
-- New Analysis
-- Analysis Progress
-- Knowledge Graph
-- Security Report
+- JWT authentication
+- Password hashing
+- Protected APIs
+- Session validation
+- Authentication middleware
+- User profile
 
-### Database Schema
+## Deliverables
 
-Design of the application's relational database including:
+Frontend
+
+- Login page
+- Registration page
+- Protected routing
+
+Backend
+
+- Authentication APIs
+- JWT
+- Middleware
+- User CRUD
+
+Database
 
 - Users
+- Authentication Sessions
+
+Completion Criteria
+
+A user can create an account, log in, and access protected pages.
+
+Status:
+
+Pending
+
+---
+
+# Milestone 3 — Project & Repository Management
+
+## Goal
+
+Allow authenticated users to create projects and submit repositories.
+
+## Objectives
+
+- Project CRUD
+- Repository metadata
+- Git repository cloning
+- ZIP upload
+- Repository validation
+- Project dashboard
+- Project listing
+
+## Deliverables
+
+Frontend
+
+- Dashboard
+- New Analysis page
+- Project list
+- Repository submission
+
+Backend
+
+- Project APIs
+- Repository APIs
+- Git cloning
+
+Database
+
 - Projects
+- Repository Metadata
+
+Completion Criteria
+
+Users can create projects and upload repositories.
+
+Status:
+
+Pending
+
+---
+
+# Milestone 4 — Analysis Job Management
+
+## Goal
+
+Manage repository analysis as asynchronous jobs.
+
+## Objectives
+
+- Analysis Job schema
+- Job lifecycle
+- Status management
+- Queue preparation
+- Progress tracking
+- Job history
+
+## Deliverables
+
+Backend
+
+- Create Analysis Job
+- Start Analysis
+- Cancel Analysis
+- Job Status API
+
+Frontend
+
+- Progress page
+- Status updates
+- Job history
+
+Database
+
 - Analysis Jobs
-- Reports
-- Findings
-- Requirements
-- Business Rules
 
-### Agent Design
+Completion Criteria
 
-High-level design of the AI system including:
+Repository analyses are tracked independently from project management.
 
-- Repository Parser
-- Knowledge Graph Builder
+Status:
+
+Pending
+
+---
+
+# Milestone 5 — Repository Parsing & Knowledge Graph
+
+## Goal
+
+Convert uploaded repositories into structured knowledge graphs.
+
+## Objectives
+
+- Repository loading
+- File discovery
+- AST parsing
+- Route extraction
+- Middleware extraction
+- Controller extraction
+- Service extraction
+- Model extraction
+- Dependency extraction
+- Neo4j graph construction
+
+## Deliverables
+
+Parser
+
+- Repository parser
+- Metadata extraction
+- Graph builder
+
+Neo4j
+
+- Nodes
+- Relationships
+- Repository graph
+
+Database
+
+- Parser metadata
+- Parsing logs
+
+Completion Criteria
+
+Every uploaded repository produces a searchable knowledge graph.
+
+Status:
+
+Pending
+
+---
+
+# Milestone 6 — AI Agent Foundation
+
+## Goal
+
+Create the LangGraph-based AI reasoning engine.
+
+## Objectives
+
+- LangGraph state
+- Planner
+- Memory
+- Reflection
+- Tool system
+- GraphRAG
+- Prompt management
+- Context loading
+
+## Deliverables
+
+Agents
+
 - Planner Agent
+- Reflection Agent
+
+Infrastructure
+
+- LangGraph workflow
+- Agent state
+- Prompt system
+
+Completion Criteria
+
+The AI can understand repository structure and reason over the knowledge graph.
+
+Status:
+
+Pending
+
+---
+
+# Milestone 7 — Security Testing Engine
+
+## Goal
+
+Automatically generate and execute intelligent business logic security tests.
+
+## Objectives
+
+- Attack planning
+- Test generation
+- HTTP execution
+- Authentication handling
+- Session management
+- Response analysis
+- Reflection loop
+- Coverage improvement
+
+## Deliverables
+
+Agents
+
+- Test Planner
 - Test Executor
 - Response Analyzer
-- Reflection Agent
-- Report Generator
 
-### LangGraph Workflow
+Outputs
 
-Design the complete agent workflow.
-
-```
-START
-    ↓
-Clone Repository
-    ↓
-Parse Repository
-    ↓
-Build Knowledge Graph
-    ↓
-Planner
-    ↓
-Executor
-    ↓
-Analyzer
-    ↓
-Reflection
-    ↓
-Report
-    ↓
-END
-```
-
----
-
-# Milestone 2 – Core Application & Agent Integration
-
-## Objective
-
-Build the minimum working version of the complete application.
-
-## Deliverables
-
-### Frontend
-
-- User Authentication
-- Dashboard
-- Repository Upload
-- Analysis Progress Screen
-- Report Screen
-
-### ms1 (Express.js)
-
-Implement:
-
-- JWT Authentication
-- User Management
-- Project Management
-- Repository Submission APIs
-- Report APIs
-
-### ms2 (FastAPI)
-
-Implement the initial AI workflow:
-
-- Clone Repository
-- Repository Parsing
-- Basic LangGraph Workflow
-- Dummy Report Generation
-
-### Frontend ↔ Backend Communication
-
-Complete interaction between:
-
-```
-React Frontend
-        ↓
-Express API (ms1)
-        ↓
-FastAPI Agent (ms2)
-```
-
-The application should successfully:
-
-- Login
-- Upload a repository
-- Trigger an analysis
-- Display a placeholder report
-
----
-
-# Milestone 3 – Complete Local MVP
-
-## Objective
-
-Deliver a fully working application running entirely on a local machine.
-
-## Deliverables
-
-### Repository Processing
-
-- Clone GitHub repositories
-- Parse Express project structure
-- Extract endpoints
-- Extract middleware
-- Extract controllers
-- Build repository metadata
-
-### Knowledge Graph
-
-Generate a graph representing:
-
-- Routes
-- Controllers
-- Services
-- Middleware
-- Models
-- Business Rules
-
-### Agent Workflow
-
-Implement:
-
-- Planner Agent
-- Test Generation
-- HTTP Test Execution
-- Response Analysis
-- Reflection Loop
-
-### Database
-
-Store:
-
-- Projects
-- Repository metadata
-- Analysis history
-- Reports
 - Findings
+- Evidence
+- Severity
+- Recommendations
 
-### Docker
+Completion Criteria
 
-Run the complete application locally using Docker Compose.
+The AI can automatically execute security tests and identify vulnerabilities.
 
-Services:
+Status:
 
-- React Frontend
-- Express API
-- FastAPI Agent
-- PostgreSQL
-- Neo4j (Knowledge Graph)
+Pending
 
 ---
 
-# Milestone 4 – Deployment & System Testing
+# Milestone 8 — Reporting & Visualization
 
-## Objective
+## Goal
 
-Deploy the complete application to cloud infrastructure.
+Present analysis results through an intuitive user interface.
+
+## Objectives
+
+- Security reports
+- Finding visualization
+- Report history
+- Analysis timeline
+- Knowledge graph viewer
+- Report export
 
 ## Deliverables
 
-### Cloud Deployment
+Frontend
 
-Deploy to AWS EC2.
+- Security Report
+- Dashboard
+- Analysis Timeline
+- Knowledge Graph
+- Report History
 
-### Infrastructure
+Backend
 
-- Docker
+- Report APIs
+- Finding APIs
+
+Completion Criteria
+
+Users can view, search, and export analysis reports.
+
+Status:
+
+Pending
+
+---
+
+# Milestone 9 — Infrastructure & Deployment
+
+## Goal
+
+Prepare the platform for production deployment.
+
+## Objectives
+
+- Docker images
 - Docker Compose
-- NGINX Reverse Proxy
-- HTTPS using Certbot
-
-### CI/CD
-
-GitHub Actions pipeline:
-
-- Lint
-- Unit Tests
-- Build
-- Docker Images
-- Deploy to EC2
-
-### System Testing
-
-Validate:
-
-- Repository Upload
-- Agent Execution
-- Report Generation
-- API Endpoints
-- Authentication
-- Deployment Stability
-
----
-
-# Milestone 5 – Production Readiness
-
-## Objective
-
-Prepare the application for production-level reliability and monitoring.
+- NGINX
+- HTTPS
+- GitHub Actions
+- AWS deployment
+- Environment configuration
+- Reverse proxy
 
 ## Deliverables
 
-### Observability
+Infrastructure
 
-Implement OpenTelemetry.
+- Production Docker setup
+- CI/CD pipeline
+- Deployment scripts
 
-Trace the entire workflow:
+Cloud
 
-```
-Repository Upload
-        ↓
-Parsing
-        ↓
-Knowledge Graph
-        ↓
-Planning
-        ↓
-Execution
-        ↓
-Reflection
-        ↓
-Report
-```
+- AWS EC2 deployment
 
-### Logging
+Completion Criteria
 
-Collect logs for:
+The platform can be deployed using the documented production workflow.
 
-- Repository Processing
-- AI Agents
-- API Requests
-- Errors
-- System Events
+Status:
 
-### Performance Metrics
-
-Track:
-
-- Analysis Duration
-- Repository Parsing Time
-- LLM Token Usage
-- Number of Generated Tests
-- Reflection Iterations
-- Endpoint Coverage
-
-### Quality Improvements
-
-Handle:
-
-- Invalid repositories
-- Large repositories
-- Missing documentation
-- Parsing failures
-- Runtime failures
-- Authentication failures
-- Unsupported frameworks
-
-### Documentation
-
-Finalize:
-
-- README
-- API Documentation
-- Deployment Guide
-- Architecture Guide
-- User Guide
+Pending
 
 ---
 
-# Final Deliverable
+# Milestone 10 — Testing, Monitoring & Production Hardening
 
-At the completion of all milestones, LogicFlow Guardian will provide:
+## Goal
 
-- Secure user authentication
-- GitHub repository analysis
-- Automated repository parsing
-- Knowledge graph generation
-- AI-driven business logic vulnerability testing
-- Reflection-based test refinement
-- Explainable security reports
-- Analysis history
-- Dockerized deployment
-- CI/CD pipeline
-- Cloud deployment
-- Production monitoring
-- Performance metrics
+Ensure production readiness, reliability, and maintainability.
+
+## Objectives
+
+- Unit testing
+- Integration testing
+- API testing
+- Error handling
+- Logging improvements
+- OpenTelemetry
+- Performance optimization
+- Documentation review
+- Final cleanup
+
+## Deliverables
+
+Testing
+
+- Backend tests
+- Frontend tests
+
+Monitoring
+
+- OpenTelemetry tracing
+
+Documentation
+
+- Updated documentation
+- Final README
+
+Completion Criteria
+
+The application is production-ready, fully documented, monitored, and stable.
+
+Status:
+
+Pending
+
+---
+
+# Future Enhancements
+
+These features are outside the initial MVP and should not be implemented until the core milestones are complete.
+
+- Multi-language repository support
+- Redis caching
+- RabbitMQ task queue
+- Kubernetes deployment
+- Multi-agent specialization
+- Plugin-based analyzers
+- Organization workspaces
+- Team collaboration
+- Elasticsearch
+- Vector database for advanced GraphRAG
+- Prometheus
+- Grafana
+- S3 report storage
+
+---
+
+# AI Instructions
+
+This document defines **what** will eventually be built.
+
+It does **not** define **what should be built next**.
+
+Before generating code, the AI must read:
+
+1. rules.md
+2. architecture.md
+3. tech-stack.md
+4. schema.md (if applicable)
+5. milestones.md
+6. current-phase.md
+7. memory.md
+
+The AI must follow only the active phase defined in `current-phase.md`.
+
+After completing that phase, it must:
+
+- Stop immediately.
+- Update `memory.md`.
+- Wait for the next instruction.
+
+It must never begin the next phase automatically.
