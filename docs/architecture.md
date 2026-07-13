@@ -2,57 +2,121 @@
 
 ## Overview
 
-LogicFlow Guardian is an Agentic AI-powered Business Logic Security Testing Platform designed to analyze application source code, infer business rules, generate intelligent security tests, execute them, and produce explainable vulnerability reports.
+LogicFlow Guardian is an Agentic AI-powered Business Logic Security Testing Platform that analyzes application source code, infers business rules, generates intelligent security test cases, executes them automatically, and produces explainable vulnerability reports.
 
-The system follows a microservice architecture consisting of two backend services:
+The platform follows a **microservice architecture** consisting of two independent backend services.
 
-- **ms1 (Express.js)** – Handles authentication, project management, report management, and acts as the primary API consumed by the frontend.
+- **ms1 (Express.js)** – Core application service responsible for authentication, project management, report management, user interactions, and persistent application data.
 - **ms2 (FastAPI)** – Dedicated AI service responsible for repository parsing, knowledge graph construction, LangGraph execution, business rule inference, security test generation, execution, reflection, and report generation.
 
-The frontend communicates only with **ms1**, while **ms1** communicates internally with **ms2** whenever an analysis is requested.
+The frontend communicates **only with ms1**. Whenever repository analysis is requested, ms1 delegates the analysis to ms2 through internal REST communication.
+
+Each microservice owns its own persistence layer, ensuring clear separation of responsibilities and minimizing coupling between business logic and AI workflows.
 
 ---
 
 # High-Level System Architecture
 
-The overall architecture illustrates how each component communicates within the platform.
+The following diagram illustrates the complete system architecture and communication between all major components.
 
-![High level design](assets/architecture-imgs/hld/HLD-architecture.png)
+![High Level Architecture](assets/architecture-imgs/hld/HLD.png)
 
 ---
 
 # Component Responsibilities
 
-The platform is divided into independent components, each responsible for a specific part of the workflow.
+The application is divided into independent components, each responsible for a well-defined domain.
 
 | Component | Responsibility |
 |-----------|----------------|
-| React Frontend | User interface, authentication, repository submission, analysis progress, knowledge graph visualization, security reports |
-| ms1 – Express.js | Authentication, project management, report management, database access, communication with ms2 |
-| ms2 – FastAPI | AI workflow execution, repository parsing, LangGraph orchestration, report generation |
-| PostgreSQL | Stores users, projects, analysis history, reports, findings, and application metadata |
-| Neo4j | Stores repository knowledge graph and extracted relationships |
+| React Frontend | User interface, authentication screens, repository submission, analysis progress, knowledge graph visualization, report viewing, and analysis history |
+| ms1 – Express.js | Authentication, authorization, project management, repository management, report storage, API gateway, and communication with ms2 |
+| ms2 – FastAPI | Repository parsing, LangGraph execution, AI reasoning, business rule extraction, knowledge graph generation, reflection, and report generation |
+| PostgreSQL (ms1) | Stores users, projects, repositories, analysis jobs, reports, findings, and application metadata |
+| PostgreSQL (ms2) | Stores analysis sessions, LangGraph execution state, reflection history, execution logs, and AI metadata |
+| Neo4j (ms2) | Stores repository knowledge graphs and relationships between routes, controllers, middleware, services, models, and business rules |
 | Docker | Containerization of all services |
-| NGINX | Reverse proxy, HTTPS termination, request routing |
+| NGINX | Reverse proxy, HTTPS termination, and request routing |
+
+---
+
+# Database Ownership
+
+LogicFlow Guardian follows the **Database-per-Service** microservice pattern.
+
+Rather than sharing one database across multiple services, each microservice owns the data required for its own responsibilities.
+
+---
+
+## ms1 Database
+
+The Express.js service owns all persistent application data.
+
+Tables include:
+
+- Users
+- Projects
+- Repository Metadata
+- Analysis Jobs
+- Reports
+- Findings
+- Authentication Sessions
+
+These tables are accessed only through ms1.
+
+---
+
+## ms2 Databases
+
+The FastAPI service owns all AI-specific information.
+
+### Neo4j
+
+Stores:
+
+- Repository Knowledge Graph
+- Route Relationships
+- Controller Dependencies
+- Middleware Flow
+- Service Relationships
+- Business Rules
+
+### PostgreSQL
+
+Stores:
+
+- Analysis Sessions
+- LangGraph State
+- Planner Outputs
+- Reflection History
+- Execution Logs
+- Temporary AI Metadata
+
+These databases are private to ms2 and are never accessed directly by ms1.
 
 ---
 
 # System Workflow
 
-The system processes an uploaded repository through multiple stages before producing a vulnerability report.
+The overall application workflow begins when a user submits a repository for analysis and ends with the generation of an explainable security report.
 
-![Stage 1: User onboarding](assets/architecture-imgs/system%20workflow/workflow_stage1_user_onboarding.png)
-![Stage 2: Ingestion and parsing](assets/architecture-imgs/system%20workflow/workflow_stage2_ingestion_parsing.png)
-![Stage 3: Knowledge graph and agent loop](assets/architecture-imgs/system%20workflow/workflow_stage3_agent_loop.png)
-![Stage 4: Reflection and delivery](assets/architecture-imgs/system%20workflow/workflow_stage4_reflection_delivery.png)
+![Stage 1: User Onboarding](assets/architecture-imgs/system%20workflow/workflow_stage1_user_onboarding.png)
+
+![Stage 2: Repository Ingestion & Parsing](assets/architecture-imgs/system%20workflow/workflow_stage2_ingestion_parsing.png)
+
+![Stage 3: Knowledge Graph & Agent Execution](assets/architecture-imgs/system%20workflow/workflow_stage3_agent_loop.png)
+
+![Stage 4: Reflection & Report Delivery](assets/architecture-imgs/system%20workflow/workflow_stage4_reflection_delivery.png)
 
 ---
 
 # Agent Architecture
 
-The AI service consists of multiple specialized agents that collaborate to understand the repository and generate meaningful security tests.
+The AI service consists of multiple specialized agents working together to understand the uploaded repository and generate intelligent business logic security tests.
 
-Each agent performs a single responsibility.
+Each agent performs one well-defined responsibility.
+
+The pipeline consists of:
 
 - Repository Parser
 - Knowledge Graph Builder
@@ -62,87 +126,105 @@ Each agent performs a single responsibility.
 - Reflection Agent
 - Report Generator
 
-These agents communicate through a shared LangGraph state, allowing the workflow to remain modular and extensible.
+The agents communicate through a shared LangGraph state object, enabling modular execution and reflection-based iteration.
 
-![Part 1: Ingestion and planning](assets/architecture-imgs/agent%20worflow/agent_pipeline_part1_ingestion_planning.png)
-Once the plan is set, the remaining agents execute, analyze, reflect, and produce the final report.
-Part 2: Execution and reporting
-![Part 2: Execution and reporting](assets/architecture-imgs/agent%20worflow/agent_pipeline_part2_execution_reporting.png)
+![Part 1: Repository Ingestion & Planning](assets/architecture-imgs/agent%20worflow/agent_pipeline_part1_ingestion_planning.png)
+
+![Part 2: Execution, Reflection & Reporting](assets/architecture-imgs/agent%20worflow/agent_pipeline_part2_execution_reporting.png)
 
 ---
 
 # LangGraph Workflow
 
-The AI workflow is implemented using LangGraph as a deterministic state machine.
+The AI workflow is implemented using LangGraph.
 
-Each node performs one logical operation before passing execution to the next node.
+Each node performs one logical task before transferring control to the next node.
 
-Reflection may redirect execution back to the Planner whenever additional testing is required.
+Unlike a traditional pipeline, LangGraph supports cyclic execution. If the Reflection Agent determines that additional test coverage is required, execution returns to the Planner Agent and continues until sufficient coverage has been achieved.
 
-![Part 1: Setup through planning](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part1_setup.png)
-![Part 2: Execution, decision, and loop](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part2_decision.png)
+![Part 1: Planning Phase](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part1_setup.png)
+
+![Part 2: Reflection Loop](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part2_decision.png)
 
 ---
 
 # Repository Analysis Lifecycle
 
-Each repository uploaded by a user follows a fixed lifecycle.
+Every uploaded repository follows the same processing lifecycle.
 
-The repository is cloned, parsed, transformed into a knowledge graph, analyzed using multiple AI agents, and finally converted into a structured security report.
+The repository is cloned, parsed, transformed into a knowledge graph, analyzed by the AI agents, and finally converted into a structured vulnerability report.
 
-![Part 1: Repository intake](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part1_intake.png)
-![Part 2: Extraction and test generation](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part2_extraction.png)
-![Part 3: Execution and reporting](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part3_execution.png)
+![Repository Intake](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part1_intake.png)
+
+![Metadata Extraction & Test Planning](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part2_extraction.png)
+
+![Execution & Report Generation](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part3_execution.png)
 
 ---
 
 # Request Lifecycle
 
-A repository analysis request travels through multiple services before returning the generated report to the user.
+The frontend communicates exclusively with the Express.js API.
 
-The frontend communicates only with the Express API, while AI operations remain isolated inside the FastAPI service.
+Express validates the request, creates an analysis job, and forwards the repository to the FastAPI AI service.
 
-![Part 1: Request path](assets/architecture-imgs/request%20lifecycle/request_cycle_part1_request_path.png)
-![Part 2: Processing and response](assets/architecture-imgs/request%20lifecycle/request_cycle_part2_processing_response.png)
+FastAPI performs the repository analysis, executes the LangGraph workflow, generates the security report, and returns the final findings to Express.
+
+Express permanently stores the generated report inside its application database before returning the analysis status to the frontend.
+
+Historical reports are therefore retrieved directly from ms1 without requiring the AI service to execute again.
+
+![Part 1: Request Path](assets/architecture-imgs/request%20lifecycle/request_cycle_part1_request_path.png)
+
+![Part 2: Processing & Response](assets/architecture-imgs/request%20lifecycle/request_cycle_part2_processing_response.png)
 
 ---
 
 # Deployment Architecture
 
-The platform is designed to run as independent Docker containers deployed on an AWS EC2 instance.
+The platform is designed to run as containerized services on AWS EC2.
 
-NGINX acts as the reverse proxy and HTTPS termination point, routing requests to the appropriate microservice.
+Each service executes inside its own Docker container.
 
-![Part 1: Ingress and frontend](assets/architecture-imgs/deployment%20workflow/deployment_topology_part1_ingress.png)
-![Part 2: AI service and data tier](assets/architecture-imgs/deployment%20workflow/deployment_topology_part2_data_tier.png)
+NGINX serves as the reverse proxy, terminating HTTPS requests and routing traffic to the appropriate backend service.
+
+The deployment architecture allows every component to scale independently while maintaining clear separation between business logic, AI processing, and data storage.
+
+![Part 1: Ingress Layer](assets/architecture-imgs/deployment%20workflow/deployment_topology_part1_ingress.png)
+
+![Part 2: Service & Data Layer](assets/architecture-imgs/deployment%20workflow/deployment_topology_part2_data_tier.png)
 
 ---
 
 # Scalability
 
-The architecture has been designed to support future extensions without major structural changes.
+The architecture has been designed to support future enhancements without major structural changes.
 
-Possible future enhancements include:
+Planned extensions include:
 
 - Multi-language repository support
 - Additional AI testing agents
-- Kubernetes deployment
-- Distributed task execution
-- Multi-tenant organizations
 - Runtime instrumentation
+- Distributed task execution
+- Kubernetes deployment
+- Multi-tenant organizations
+- Vector databases for GraphRAG
 - Plugin-based vulnerability analyzers
 
 ---
 
 # Architectural Principles
 
-The following design principles are followed throughout the project.
+The following architectural principles guide the design of LogicFlow Guardian.
 
-- Separation of concerns using microservices
-- AI isolated from business APIs
+- Microservice architecture
+- Database-per-Service design
+- Separation of business logic and AI reasoning
 - Stateless backend services
 - Modular LangGraph nodes
 - Explainable AI-generated findings
-- Extensible agent pipeline
-- Production-ready deployment architecture
+- Independent service scalability
 - Containerized infrastructure
+- Secure internal service communication
+- Extensible agent pipeline
+- Production-ready cloud deployment
