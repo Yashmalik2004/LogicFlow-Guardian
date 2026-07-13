@@ -1,0 +1,14 @@
+build each phase in docs>development> one by one
+and then put info about each phase into current-phase.md
+and put all info needed for ms1 .env and ms2 .env
+and do much more research about what is left
+and just start building
+vansh - login, register, jwt token generation or dashboard if needed.
+yash - express
+sneha - agent workflow
+
+all three must tell their ai agent to first read docs files, especially these files:
+  1. conventions.md
+  2. rules.md
+  3. api-contracts.md
+  and others... before building anything.
