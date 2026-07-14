@@ -25,3 +25,6 @@ if __name__ == "__main__":
         port=env.FASTAPI_PORT,
         reload=(env.PYTHON_ENV == "development")
     )
+
+print(env.FASTAPI_PORT)
+print(env.DATABASE_URL)

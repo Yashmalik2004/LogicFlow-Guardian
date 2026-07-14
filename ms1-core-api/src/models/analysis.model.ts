@@ -1,6 +1,6 @@
 import { pool } from '../config/database';
 
-export type AnalysisStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type AnalysisStatus = 'QUEUED' | 'PROCESSING' | 'DISPATCHED' | 'COMPLETED' | 'FAILED';
 
 export interface Analysis {
   analysis_id?: number;
