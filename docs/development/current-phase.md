@@ -2,23 +2,23 @@
 
 ## Active Phase
 
-Phase 06 — Analysis Job Queue
+Phase 07 — MS1 ↔ MS2 Job Communication
 
 Reference:
 
-development/phases/phase-06-analysis-job-queue.md
+development/phases/phase-07-ms1-ms2-job-communication.md
 
 ---
 
 ## Objective
 
-Introduce asynchronous job processing into MS1 using Redis and BullMQ.
+Connect MS1 and MS2 through internal REST communication.
 
-This phase establishes the analysis queue infrastructure.
+When a BullMQ worker processes an analysis job, it should dispatch the job to MS2.
 
-Users should be able to request an analysis, which creates a queued job instead of immediately contacting MS2.
+MS2 should acknowledge receipt of the job.
 
-MS2 is NOT involved in this phase.
+No repository processing or AI analysis should occur.
 
 ---
 
@@ -28,13 +28,14 @@ Implement ONLY the deliverables defined in the referenced phase document.
 
 Do NOT implement:
 
-- MS2 communication
-- Repository upload
-- Git cloning
 - Repository storage
-- AI analysis
+- Git cloning
+- Repository parsing
 - LangGraph
+- Neo4j
 - Docker
+- Dynamic testing
+- Reflection
 - Webhooks
 - WebSockets
 - Report generation
