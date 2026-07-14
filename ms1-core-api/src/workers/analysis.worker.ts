@@ -2,6 +2,7 @@ import { Worker, Job, ConnectionOptions } from 'bullmq';
 import { env } from '../config/env';
 import { ANALYSIS_QUEUE_NAME } from '../config/queue';
 import { AnalysisModel } from '../models/analysis.model';
+import { dispatchAnalysisToMs2 } from '../services/dispatch.service';
 import { logger } from '../utils/logger';
 
 export interface AnalysisJobData {
@@ -31,7 +32,7 @@ async function processAnalysisJob(job: Job<AnalysisJobData>): Promise<void> {
   const { analysisId, projectId, userId } = job.data;
 
   logger.info(
-    `[Worker] Starting Analysis — analysisId=${analysisId} projectId=${projectId} userId=${userId}`
+    `Worker Started — analysisId=${analysisId} projectId=${projectId} userId=${userId}`
   );
 
   // Mark as PROCESSING
@@ -41,15 +42,13 @@ async function processAnalysisJob(job: Job<AnalysisJobData>): Promise<void> {
 
   logger.info(`[Worker] Analysis ${analysisId} — Status: PROCESSING`);
 
-  // Simulate work (5-second delay per phase spec)
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // Dispatch to MS2 — implements retry + timeout logic internally
+  await dispatchAnalysisToMs2({ analysisId, projectId, userId });
 
-  // Mark as COMPLETED
-  await AnalysisModel.updateStatus(analysisId, 'COMPLETED', {
-    completed_at: new Date(),
-  });
+  // Mark as DISPATCHED after successful ACK from MS2
+  await AnalysisModel.updateStatus(analysisId, 'DISPATCHED');
 
-  logger.info(`[Worker] Analysis ${analysisId} — Status: COMPLETED`);
+  logger.info(`[Worker] Analysis ${analysisId} — Status: DISPATCHED`);
 }
 
 let worker: Worker | null = null;

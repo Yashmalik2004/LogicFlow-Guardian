@@ -16,5 +16,6 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET as string,
   NODE_ENV: process.env.NODE_ENV as string,
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+  MS2_BASE_URL: process.env.MS2_BASE_URL || 'http://localhost:7000',
 };
 

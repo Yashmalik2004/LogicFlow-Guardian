@@ -18,7 +18,7 @@ Milestone 2
 
 Current Phase
 
-Phase 06 — Analysis Job Queue
+Phase 07 — MS1 ↔ MS2 Job Communication
 
 ---
 
@@ -31,6 +31,7 @@ Phase 06 — Analysis Job Queue
 - Phase 05 — Project & Repository Management ✅
 - Phase 05B — Frontend Project Dashboard ✅
 - Phase 06 — Analysis Job Queue ✅
+- Phase 07 — MS1 ↔ MS2 Job Communication ✅
 
 ---
 
@@ -419,9 +420,67 @@ Notes
 
 ---
 
+## Phase 07
+
+Status
+
+Completed ✅
+
+Files Created
+
+- ms1-core-api/src/services/dispatch.service.ts (HTTP dispatch to MS2 with retry + 30s timeout)
+- ms2-agent/app/routers/__init__.py (routers package)
+- ms2-agent/app/routers/internal.py (POST /internal/analysis/start endpoint)
+- ms2-agent/schemas/analysis_schemas.py (Pydantic AnalysisStartRequest / AnalysisStartResponse)
+
+Files Modified
+
+- ms1-core-api/src/config/env.ts (added MS2_BASE_URL)
+- ms1-core-api/.env (added MS2_BASE_URL=http://localhost:7000)
+- ms1-core-api/.env.example (documented MS2_BASE_URL)
+- ms1-core-api/tsconfig.json (added DOM to lib for native fetch types)
+- ms1-core-api/src/models/analysis.model.ts (added DISPATCHED to AnalysisStatus union)
+- ms1-core-api/src/workers/analysis.worker.ts (replaced 5-second simulation with real MS2 dispatch call)
+- ms2-agent/app/app.py (registered internal_router, added 400 validation error handler)
+
+APIs Implemented
+
+- POST /internal/analysis/start (MS2) — validates payload (analysisId, projectId, userId), returns { accepted: true, message: "Analysis job received." }
+
+Database Changes
+
+- DISPATCHED added to allowed ANALYSIS status values (in TypeScript type; no schema migration required as PostgreSQL stores it as VARCHAR)
+
+Worker Behaviour
+
+- Receives job → marks PROCESSING → calls MS2 → on ACK marks DISPATCHED → worker exits
+- On MS2 failure: retries up to 3 times with 30s timeout per attempt → marks FAILED
+
+Commit
+
+feat(communication): implement MS1 ↔ MS2 internal job dispatch
+
+Notes
+
+- TypeScript strict compile (tsc --noEmit) passes with zero errors.
+- Python syntax check (py_compile) passes on all new files.
+- Native fetch used (Node.js 18+) — no new npm dependency introduced.
+- MS2_BASE_URL defaults to http://localhost:7000 (matches MS2 FASTAPI_PORT=7000 in .env).
+- Internal endpoint is NOT publicly accessible — only MS1 BullMQ worker calls it.
+- No AI, no repository parsing, no Neo4j, no Docker, no webhooks, no WebSockets.
+
+### Issue Fixes & Refinements
+
+- **Issue 1 (Health Endpoint)**: Implemented standard `GET /health` on MS2 returning `{"status": "OK", "service": "ms2-agent"}`, keeping `/internal/health` for backward compatibility.
+- **Issue 2 (Router Verification)**: Verified that `/internal/analysis/start` is correctly mounted via `internal_router`.
+- **Issue 3 & 5 (Response Body Validation)**: Enhanced MS1 dispatch service to strictly validate the response body (`result.accepted === true`) rather than assuming any HTTP 200 is successful.
+- **Issue 4 (Precise Logging)**: Standardized per-job logs to follow the sequence: `Analysis Created` → `Queue Job Created` → `Worker Started` → `Dispatch Started` → `Request Sent` → `ACK Received` → `Dispatch Completed/Failed`.
+- **Issue 6 (Unused Imports)**: Removed unused `asynccontextmanager` and `FastAPI` imports from `ms2-agent/main.py` and unused `JSONResponse` from `ms2-agent/app/routers/internal.py`.
+
+---
+
 # Pending Work
 
-- MS1 ↔ MS2 Job Communication
 - Repository Storage & Retrieval
 - Repository Parser
 - Knowledge Graph Builder (Neo4j)
