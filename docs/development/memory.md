@@ -18,7 +18,7 @@ Milestone 2
 
 Current Phase
 
-Phase 05B — Frontend Project Dashboard
+Phase 06 — Analysis Job Queue
 
 ---
 
@@ -30,6 +30,7 @@ Phase 05B — Frontend Project Dashboard
 - Phase 04 — Frontend Authentication ✅
 - Phase 05 — Project & Repository Management ✅
 - Phase 05B — Frontend Project Dashboard ✅
+- Phase 06 — Analysis Job Queue ✅
 
 ---
 
@@ -363,9 +364,63 @@ Notes
 
 ---
 
+## Phase 06
+
+Status
+
+Completed ✅
+
+Files Created
+
+- ms1-core-api/src/config/redis.ts (ioredis connection singleton)
+- ms1-core-api/src/config/queue.ts (BullMQ AnalysisQueue factory)
+- ms1-core-api/src/models/analysis.model.ts (AnalysisModel: create, update, findById)
+- ms1-core-api/src/services/analysis.service.ts (AnalysisService: start, get status)
+- ms1-core-api/src/controllers/analysis.controller.ts (AnalysisController: thin handlers)
+- ms1-core-api/src/routes/analysis.routes.ts (POST /start, GET /:id/status)
+- ms1-core-api/src/workers/analysis.worker.ts (BullMQ Worker: PROCESSING → 5s delay → COMPLETED)
+
+Files Modified
+
+- ms1-core-api/src/config/env.ts (added REDIS_URL)
+- ms1-core-api/src/config/database.ts (added Analysis table CREATE TABLE IF NOT EXISTS)
+- ms1-core-api/src/app.ts (registered analysisRouter on /api/analysis)
+- ms1-core-api/src/server.ts (startAnalysisWorker called on boot)
+- ms1-core-api/.env.example (added REDIS_URL documentation)
+
+APIs Implemented
+
+- POST /api/analysis/start — JWT required, validates project ownership, creates Analysis record and BullMQ job
+- GET /api/analysis/:analysisId/status — JWT required, reads from PostgreSQL only
+
+Database Changes
+
+- "Analysis" table created: analysis_id, project_id (FK), user_id (FK), bull_job_id, status, queue_position, started_at, completed_at, created_at, updated_at
+- Allowed status values: QUEUED, PROCESSING, COMPLETED, FAILED
+
+Infrastructure Added
+
+- Redis (ioredis) connection
+- BullMQ AnalysisQueue
+- BullMQ Worker (simulates 5-second analysis, updates DB status)
+
+Commit
+
+feat(queue): implement BullMQ analysis job queue with Redis
+
+Notes
+
+- TypeScript strict compile (tsc --noEmit) passes with zero errors.
+- bull_job_id is stored internally but never returned to the client API.
+- Status reads always go to PostgreSQL, never to BullMQ directly.
+- Worker failure handler marks Analysis status = FAILED in the database.
+- Redis connection is lazy (lazyConnect:true) so startup doesn't fail if Redis is temporarily down.
+- No MS2 communication, no repository parsing, no AI, no Docker.
+
+---
+
 # Pending Work
 
-- Analysis Job Queue (Redis + BullMQ)
 - MS1 ↔ MS2 Job Communication
 - Repository Storage & Retrieval
 - Repository Parser
@@ -375,8 +430,9 @@ Notes
 - Dynamic Test Executor
 - Reflection Agent
 - Report Generator
-- Webhook & Real-Time Progress Updates
-- Report Viewer & Knowledge Graph UI
+- Webhooks & Real-Time Updates
+- Report Viewer APIs & UI
+- Knowledge Graph Visualization UI
 - Logging, Metrics & Observability
 - Deployment & CI/CD
 - Production Hardening & Performance
