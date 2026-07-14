@@ -4,13 +4,13 @@
 
 | Property | Value |
 |----------|-------|
-| Phase | Phase 01 |
-| Name | MS1 Foundation |
+| Phase | Phase 02 |
+| Name | MS2 Foundation |
 | Milestone | Milestone 2 |
 | Status | Active |
-| Owner | Yash |
+| Owner | Vansh |
 | Estimated Time | 2–3 Hours |
-| Branch | feature/phase-01-ms1-foundation |
+| Branch | feature/phase-02-ms2-foundation |
 
 ---
 
