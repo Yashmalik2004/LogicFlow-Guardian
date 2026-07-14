@@ -2,28 +2,23 @@
 
 ## Active Phase
 
-Phase 05B — Frontend Project Dashboard
+Phase 06 — Analysis Job Queue
 
 Reference:
 
-development/phases/phase-05B-project-dashboard-ui.md
+development/phases/phase-06-analysis-job-queue.md
 
 ---
 
 ## Objective
 
-Build the frontend interface for project management using the existing MS1 Project APIs.
+Introduce asynchronous job processing into MS1 using Redis and BullMQ.
 
-This phase should allow authenticated users to:
+This phase establishes the analysis queue infrastructure.
 
-- View all their projects
-- Create a new project
-- Edit an existing project
-- Delete a project
+Users should be able to request an analysis, which creates a queued job instead of immediately contacting MS2.
 
-The frontend must communicate only with MS1.
-
-No repository uploads or AI analysis should be implemented.
+MS2 is NOT involved in this phase.
 
 ---
 
@@ -33,16 +28,16 @@ Implement ONLY the deliverables defined in the referenced phase document.
 
 Do NOT implement:
 
-- Repository upload
-- ZIP upload
-- Git cloning
-- Analysis queue
 - MS2 communication
+- Repository upload
+- Git cloning
+- Repository storage
 - AI analysis
-- WebSockets
+- LangGraph
+- Docker
 - Webhooks
-- Analysis Progress page
-- Report page
+- WebSockets
+- Report generation
 
 Stop immediately after the completion checklist has been satisfied.
 
