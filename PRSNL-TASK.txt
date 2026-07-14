@@ -1,14 +1,11 @@
-build each phase in docs>development> one by one
-and then put info about each phase into current-phase.md
-and put all info needed for ms1 .env and ms2 .env
-and do much more research about what is left
-and just start building
-vansh - login, register, jwt token generation or dashboard if needed.
-yash - express
-sneha - agent workflow
-
-all three must tell their ai agent to first read docs files, especially these files:
-  1. conventions.md
-  2. rules.md
-  3. api-contracts.md
-  and others... before building anything.
+Improvments to make:
+use dokerode
+use queue between fastapi and express to support too much users
+how we are checking response in fast api
+web hooks from ms2 to ms1 data transfer
+how will ai check repo url, or how will it find the start file. 
+how will parsing happen.
+where will it store the project, machine or server.
+and how will it automatically compile project when u are sleeping.
+agentic ai me knowledge graph kese input hora h.
+what will frontend look like when ai is processing the repo, what if they constantly refresh? and how user sees if it has completed or how is the response shared among ms2,ms1,frontend.
