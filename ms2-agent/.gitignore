@@ -1,20 +1,93 @@
+# ==========================================
+# Environment Variables
+# ==========================================
+
 .env
-
 .env.*
+!.env.example
 
-node_modules
+ms1-core-api/.env
+ms2-agent/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
 
-__pycache__
+# ==========================================
+# Node.js
+# ==========================================
 
-*.pyc
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-dist
+# Build Output
+dist/
+build/
+.next/
+out/
 
-build
+# Coverage
+coverage/
 
-coverage
+# TypeScript
+*.tsbuildinfo
+
+# ==========================================
+# Python
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
 venv/
 .venv/
+env/
+
 .pytest_cache/
+
+# ==========================================
+# IDE
+# ==========================================
+
+.vscode/
 .idea/
-.vscode/
+
+# ==========================================
+# OS
+# ==========================================
+
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# Logs
+# ==========================================
+
+*.log
+logs/
+
+# ==========================================
+# Database Files
+# ==========================================
+
+*.sqlite
+*.db
+
+# ==========================================
+# Docker
+# ==========================================
+
+docker-compose.override.yml
+
+# ==========================================
+# Cache / Temporary
+# ==========================================
+
+.cache/
+tmp/
+temp/
