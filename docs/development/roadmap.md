@@ -46,7 +46,7 @@ The milestone is considered complete when a user can:
 
 | Phase | Status | Description |
 |--------|--------|-------------|
-| Phase 01 | ⬜ Not Started | MS1 Foundation |
+| Phase 01 | ✅ Completed | MS1 Foundation |
 | Phase 02 | ⬜ Not Started | MS2 Foundation |
 | Phase 03 | ⬜ Not Started | Authentication |
 | Phase 04 | ⬜ Not Started | Frontend Authentication |
