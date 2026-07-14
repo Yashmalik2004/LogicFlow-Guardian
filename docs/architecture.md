@@ -1,58 +1,117 @@
 # System Architecture
 
-## Overview
+# Overview
 
-LogicFlow Guardian is an Agentic AI-powered Business Logic Security Testing Platform that analyzes application source code, infers business rules, generates intelligent security test cases, executes them automatically, and produces explainable vulnerability reports.
+LogicFlow Guardian is an Agentic AI-powered Business Logic Vulnerability Testing Platform that automatically analyzes backend repositories, discovers business rules, generates intelligent security tests, safely executes those tests inside isolated environments, and produces explainable security reports.
 
-The platform follows a **microservice architecture** consisting of two independent backend services.
+The platform follows a production-oriented microservice architecture built around **asynchronous job processing**, **event-driven communication**, and **AI workflow orchestration**.
 
-- **ms1 (Express.js)** – Core application service responsible for authentication, project management, report management, user interactions, and persistent application data.
-- **ms2 (FastAPI)** – Dedicated AI service responsible for repository parsing, knowledge graph construction, LangGraph execution, business rule inference, security test generation, execution, reflection, and report generation.
+The system is divided into two independent backend services.
 
-The frontend communicates **only with ms1**. Whenever repository analysis is requested, ms1 delegates the analysis to ms2 through internal REST communication.
+- **MS1 (Express.js)** – Core Application Service responsible for authentication, project management, repository management, report management, job scheduling, and frontend communication.
+- **MS2 (FastAPI)** – AI Analysis Service responsible for repository parsing, knowledge graph construction, LangGraph execution, AI reasoning, container execution, reflection, and report generation.
 
-Each microservice owns its own persistence layer, ensuring clear separation of responsibilities and minimizing coupling between business logic and AI workflows.
+Each service owns its own database and business domain.
+
+The frontend never communicates directly with MS2.
 
 ---
 
 # High-Level System Architecture
 
-The following diagram illustrates the complete system architecture and communication between all major components.
+The following diagram illustrates the complete architecture.
 
 ![High Level Architecture](assets/architecture-imgs/hld/HLD.png)
 
 ---
 
-# Component Responsibilities
-
-The application is divided into independent components, each responsible for a well-defined domain.
+# Core Components
 
 | Component | Responsibility |
-|-----------|----------------|
-| React Frontend | User interface, authentication screens, repository submission, analysis progress, knowledge graph visualization, report viewing, and analysis history |
-| ms1 – Express.js | Authentication, authorization, project management, repository management, report storage, API gateway, and communication with ms2 |
-| ms2 – FastAPI | Repository parsing, LangGraph execution, AI reasoning, business rule extraction, knowledge graph generation, reflection, and report generation |
-| PostgreSQL (ms1) | Stores users, projects, repositories, analysis jobs, reports, findings, and application metadata |
-| PostgreSQL (ms2) | Stores analysis sessions, LangGraph execution state, reflection history, execution logs, and AI metadata |
-| Neo4j (ms2) | Stores repository knowledge graphs and relationships between routes, controllers, middleware, services, models, and business rules |
-| Docker | Containerization of all services |
-| NGINX | Reverse proxy, HTTPS termination, and request routing |
+|------------|----------------|
+| React Frontend | Authentication, dashboard, repository upload, live analysis progress, knowledge graph visualization, report viewing |
+| MS1 (Express.js) | Authentication, JWT, project management, repository metadata, report storage, queue management, webhook receiver, websocket server |
+| PostgreSQL (MS1) | Users, Projects, Repository Metadata, Analysis Jobs, Reports, Findings |
+| Redis | Analysis job queue using BullMQ |
+| BullMQ | Job scheduling, retries, concurrency management |
+| MS2 (FastAPI) | Repository parsing, AI workflow execution, LangGraph orchestration, Docker execution, reflection, report generation |
+| PostgreSQL (MS2) | Analysis sessions, execution logs, planner state, LangGraph state, token usage, reflection history |
+| Neo4j | Repository knowledge graph |
+| Dockerode | Starts and destroys isolated runner containers |
+| Runner Images | Secure execution environments for Node, Python and Java projects |
+| NGINX | HTTPS termination, reverse proxy and routing |
+| OpenTelemetry | Distributed tracing and observability |
+
+---
+
+# Service Responsibilities
+
+## MS1 (Express.js)
+
+MS1 owns every business-facing responsibility.
+
+Responsibilities include:
+
+- User Authentication
+- JWT Authorization
+- Project Management
+- Repository Registration
+- Repository Metadata
+- Report Storage
+- Report Retrieval
+- Analysis Job Creation
+- Queue Management
+- Webhook Receiver
+- WebSocket Notifications
+
+MS1 never performs AI analysis.
+
+MS1 never executes repositories.
+
+MS1 never communicates directly with Docker.
+
+---
+
+## MS2 (FastAPI)
+
+MS2 owns the complete AI analysis lifecycle.
+
+Responsibilities include:
+
+- Repository Retrieval
+- Repository Parsing
+- Framework Detection
+- Knowledge Graph Generation
+- Business Rule Extraction
+- LangGraph Execution
+- Test Planning
+- Runtime Discovery
+- Docker Container Management
+- Dynamic Test Execution
+- Reflection
+- Report Generation
+
+MS2 is completely isolated from user management and business APIs.
 
 ---
 
 # Database Ownership
 
-LogicFlow Guardian follows the **Database-per-Service** microservice pattern.
+The platform follows the **Database per Service** architecture.
 
-Rather than sharing one database across multiple services, each microservice owns the data required for its own responsibilities.
+Each microservice owns and manages its own persistence layer.
+
+No service directly accesses another service's database.
+
+Communication occurs only through APIs or asynchronous events.
 
 ---
 
-## ms1 Database
+## PostgreSQL (MS1)
 
-The Express.js service owns all persistent application data.
+Stores permanent application data.
 
-Tables include:
+Includes:
 
 - Users
 - Projects
@@ -62,169 +121,555 @@ Tables include:
 - Findings
 - Authentication Sessions
 
-These tables are accessed only through ms1.
+Historical reports are always served directly from this database.
 
 ---
 
-## ms2 Databases
+## PostgreSQL (MS2)
 
-The FastAPI service owns all AI-specific information.
+Stores temporary AI execution data.
 
-### Neo4j
-
-Stores:
-
-- Repository Knowledge Graph
-- Route Relationships
-- Controller Dependencies
-- Middleware Flow
-- Service Relationships
-- Business Rules
-
-### PostgreSQL
-
-Stores:
+Includes:
 
 - Analysis Sessions
+- Planner State
 - LangGraph State
-- Planner Outputs
 - Reflection History
 - Execution Logs
-- Temporary AI Metadata
+- Prompt Versions
+- Token Usage
+- Runtime Metadata
+- Container Metadata
 
-These databases are private to ms2 and are never accessed directly by ms1.
-
----
-
-# System Workflow
-
-The overall application workflow begins when a user submits a repository for analysis and ends with the generation of an explainable security report.
-
-![Stage 1: User Onboarding](assets/architecture-imgs/system%20workflow/workflow_stage1_user_onboarding.png)
-
-![Stage 2: Repository Ingestion & Parsing](assets/architecture-imgs/system%20workflow/workflow_stage2_ingestion_parsing.png)
-
-![Stage 3: Knowledge Graph & Agent Execution](assets/architecture-imgs/system%20workflow/workflow_stage3_agent_loop.png)
-
-![Stage 4: Reflection & Report Delivery](assets/architecture-imgs/system%20workflow/workflow_stage4_reflection_delivery.png)
+This database exists solely to support AI execution.
 
 ---
 
-# Agent Architecture
+## Neo4j
 
-The AI service consists of multiple specialized agents working together to understand the uploaded repository and generate intelligent business logic security tests.
+Stores semantic repository relationships.
 
-Each agent performs one well-defined responsibility.
+Example nodes:
 
-The pipeline consists of:
+- Repository
+- Route
+- Controller
+- Middleware
+- Service
+- DTO
+- Model
+- Business Rule
+- Finding
+- Test Case
 
-- Repository Parser
-- Knowledge Graph Builder
-- Planner Agent
-- Test Executor
-- Response Analyzer
-- Reflection Agent
-- Report Generator
-
-The agents communicate through a shared LangGraph state object, enabling modular execution and reflection-based iteration.
-
-![Part 1: Repository Ingestion & Planning](assets/architecture-imgs/agent%20worflow/agent_pipeline_part1_ingestion_planning.png)
-
-![Part 2: Execution, Reflection & Reporting](assets/architecture-imgs/agent%20worflow/agent_pipeline_part2_execution_reporting.png)
+The graph enables dependency traversal and AI reasoning.
 
 ---
 
-# LangGraph Workflow
+# Analysis Queue
 
-The AI workflow is implemented using LangGraph.
+Repository analysis is intentionally asynchronous.
 
-Each node performs one logical task before transferring control to the next node.
+When a repository is submitted:
 
-Unlike a traditional pipeline, LangGraph supports cyclic execution. If the Reflection Agent determines that additional test coverage is required, execution returns to the Planner Agent and continues until sufficient coverage has been achieved.
+Frontend
 
-![Part 1: Planning Phase](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part1_setup.png)
+↓
 
-![Part 2: Reflection Loop](assets/architecture-imgs/langGraph%20workflow/coverage_loop_part2_decision.png)
+MS1
+
+↓
+
+Create Analysis Job
+
+↓
+
+Redis Queue
+
+↓
+
+Return Job ID
+
+↓
+
+Frontend receives immediate response
+
+MS1 never waits for AI execution.
+
+This design enables thousands of queued analyses without blocking API requests.
 
 ---
 
-# Repository Analysis Lifecycle
+# MS1 ↔ MS2 Communication
 
-Every uploaded repository follows the same processing lifecycle.
+MS1 communicates with MS2 through REST APIs only for job submission.
 
-The repository is cloned, parsed, transformed into a knowledge graph, analyzed by the AI agents, and finally converted into a structured vulnerability report.
+MS2 communicates back to MS1 using Webhooks.
 
-![Repository Intake](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part1_intake.png)
+Workflow:
 
-![Metadata Extraction & Test Planning](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part2_extraction.png)
+MS1
 
-![Execution & Report Generation](assets/architecture-imgs/repo%20lifecycle/codebase_pipeline_part3_execution.png)
+↓
+
+POST /analysis
+
+↓
+
+Queue Job
+
+↓
+
+MS2 Worker
+
+↓
+
+Analysis Complete
+
+↓
+
+Webhook
+
+↓
+
+MS1 stores report
+
+This eliminates polling between services.
+
+---
+
+# Real-Time Client Updates
+
+The frontend never polls the backend.
+
+Instead:
+
+React
+
+↓
+
+WebSocket
+
+↓
+
+MS1
+
+↓
+
+Analysis Status Updates
+
+Example states:
+
+- Queued
+- Cloning Repository
+- Parsing Repository
+- Building Knowledge Graph
+- Planning Tests
+- Executing Tests
+- Reflection
+- Report Generation
+- Completed
+
+This provides a real-time user experience similar to GitHub Actions.
+
+---
+
+# Repository Lifecycle
+
+Every uploaded repository follows the same lifecycle.
+
+Repository Submitted
+
+↓
+
+Stored on Disk (future: AWS S3)
+
+↓
+
+Repository Registered
+
+↓
+
+Queue Job Created
+
+↓
+
+MS2 Worker Receives Job
+
+↓
+
+Repository Analysis
+
+↓
+
+Report Generated
+
+↓
+
+Webhook to MS1
+
+↓
+
+Permanent Report Storage
+
+↓
+
+User Notification
+
+The repository itself is never stored inside PostgreSQL.
+
+Only metadata and storage paths are stored.
+
+---
+
+# AI Workflow
+
+The AI workflow is orchestrated using LangGraph.
+
+Pipeline:
+
+Repository Retrieval
+
+↓
+
+Repository Parser
+
+↓
+
+Framework Detection
+
+↓
+
+Knowledge Graph Builder
+
+↓
+
+Business Rule Extraction
+
+↓
+
+Planner Agent
+
+↓
+
+Runtime Discovery
+
+↓
+
+Dynamic Test Execution
+
+↓
+
+Reflection Agent
+
+↓
+
+Report Generator
+
+↓
+
+Webhook
+
+Reflection may redirect execution back to the Planner whenever additional coverage is required.
+
+---
+
+# Runtime Execution
+
+Repositories are never executed directly on the host machine.
+
+Instead:
+
+Repository
+
+↓
+
+Runner Image Selected
+
+↓
+
+Docker Container Created
+
+↓
+
+Repository Mounted
+
+↓
+
+Dependencies Installed
+
+↓
+
+Application Started
+
+↓
+
+Health Check
+
+↓
+
+AI Executes Tests
+
+↓
+
+Container Destroyed
+
+This guarantees secure execution.
+
+---
+
+# Runner Images
+
+The platform maintains trusted execution environments.
+
+Examples:
+
+- logicflow-node-runner
+- logicflow-python-runner
+- logicflow-java-runner
+
+Repositories are mounted into these containers.
+
+User-provided Dockerfiles are never executed.
+
+---
+
+# Docker Management
+
+Docker containers are managed exclusively by MS2 using Dockerode.
+
+Responsibilities include:
+
+- Container Creation
+- Resource Limits
+- Log Streaming
+- Health Checks
+- Timeouts
+- Cleanup
+
+Each container has:
+
+- CPU limits
+- Memory limits
+- Network restrictions
+- Execution timeout
+- Automatic cleanup
+
+No repository executes outside an isolated container.
 
 ---
 
 # Request Lifecycle
 
-The frontend communicates exclusively with the Express.js API.
+The request lifecycle consists of two independent flows.
 
-Express validates the request, creates an analysis job, and forwards the repository to the FastAPI AI service.
+## Business Flow
 
-FastAPI performs the repository analysis, executes the LangGraph workflow, generates the security report, and returns the final findings to Express.
+User
 
-Express permanently stores the generated report inside its application database before returning the analysis status to the frontend.
+↓
 
-Historical reports are therefore retrieved directly from ms1 without requiring the AI service to execute again.
+React
 
-![Part 1: Request Path](assets/architecture-imgs/request%20lifecycle/request_cycle_part1_request_path.png)
+↓
 
-![Part 2: Processing & Response](assets/architecture-imgs/request%20lifecycle/request_cycle_part2_processing_response.png)
+MS1
+
+↓
+
+Database
+
+↓
+
+Queue Job
+
+↓
+
+Response
+
+---
+
+## AI Flow
+
+Queue
+
+↓
+
+MS2 Worker
+
+↓
+
+Repository Analysis
+
+↓
+
+Knowledge Graph
+
+↓
+
+Planner
+
+↓
+
+Execution
+
+↓
+
+Reflection
+
+↓
+
+Report
+
+↓
+
+Webhook
+
+↓
+
+MS1 Database
+
+↓
+
+WebSocket Notification
+
+↓
+
+Frontend
 
 ---
 
 # Deployment Architecture
 
-The platform is designed to run as containerized services on AWS EC2.
+Production deployment consists of independent containers.
 
-Each service executes inside its own Docker container.
+Components:
 
-NGINX serves as the reverse proxy, terminating HTTPS requests and routing traffic to the appropriate backend service.
+- React
+- NGINX
+- MS1
+- MS2
+- Redis
+- PostgreSQL (MS1)
+- PostgreSQL (MS2)
+- Neo4j
 
-The deployment architecture allows every component to scale independently while maintaining clear separation between business logic, AI processing, and data storage.
+All services execute inside Docker.
 
-![Part 1: Ingress Layer](assets/architecture-imgs/deployment%20workflow/deployment_topology_part1_ingress.png)
+NGINX provides HTTPS termination and request routing.
 
-![Part 2: Service & Data Layer](assets/architecture-imgs/deployment%20workflow/deployment_topology_part2_data_tier.png)
+Redis enables asynchronous processing.
+
+Every component can scale independently.
 
 ---
 
-# Scalability
+# Scalability Strategy
 
-The architecture has been designed to support future enhancements without major structural changes.
+The architecture supports horizontal scaling.
 
-Planned extensions include:
+Future scaling strategies include:
 
-- Multi-language repository support
-- Additional AI testing agents
-- Runtime instrumentation
-- Distributed task execution
-- Kubernetes deployment
-- Multi-tenant organizations
-- Vector databases for GraphRAG
-- Plugin-based vulnerability analyzers
+- Multiple MS2 Workers
+- Multiple BullMQ Workers
+- Kubernetes Deployment
+- Distributed Redis
+- Shared S3 Repository Storage
+- Read Replicas
+- Multiple Neo4j Instances
+- Distributed Runner Pools
+
+Workers can be increased without changing application logic.
+
+---
+
+# Failure Handling
+
+The architecture is designed to tolerate failures.
+
+Examples:
+
+- Worker crashes
+- Repository startup failures
+- Infinite loops
+- Memory exhaustion
+- Invalid repositories
+- Queue retries
+- Container timeouts
+- AI failures
+
+Failed jobs are retried automatically through BullMQ.
+
+Container failures never affect the host machine.
+
+---
+
+# Observability
+
+Every analysis is fully traceable.
+
+OpenTelemetry captures:
+
+- Queue latency
+- Repository parsing time
+- Graph generation time
+- AI token usage
+- Docker startup time
+- Test execution time
+- Reflection iterations
+- Total analysis duration
+
+Distributed traces span:
+
+React
+
+↓
+
+MS1
+
+↓
+
+Redis
+
+↓
+
+MS2
+
+↓
+
+Docker
+
+↓
+
+Webhook
+
+↓
+
+MS1
+
+↓
+
+Frontend
 
 ---
 
 # Architectural Principles
 
-The following architectural principles guide the design of LogicFlow Guardian.
+The platform follows the following principles.
 
-- Microservice architecture
-- Database-per-Service design
-- Separation of business logic and AI reasoning
-- Stateless backend services
-- Modular LangGraph nodes
-- Explainable AI-generated findings
-- Independent service scalability
-- Containerized infrastructure
-- Secure internal service communication
-- Extensible agent pipeline
-- Production-ready cloud deployment
+- Microservice Architecture
+- Database per Service
+- Event-Driven Communication
+- Asynchronous Processing
+- Queue-Based Execution
+- Stateless Services
+- AI Isolation
+- Secure Containerized Execution
+- Explainable AI
+- Modular LangGraph Nodes
+- Production-Ready Scalability
+- Independent Horizontal Scaling
+- Secure Internal APIs
+- Container-First Deployment
+- Failure Isolation
+- Real-Time Client Communication
