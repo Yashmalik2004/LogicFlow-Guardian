@@ -49,7 +49,7 @@ The milestone is considered complete when a user can:
 | Phase 01 | ✅ Completed | MS1 Foundation |
 | Phase 02 | ✅ Completed | MS2 Foundation |
 | Phase 03 | ✅ Completed | Authentication |
-| Phase 04 | ⬜ Not Started | Frontend Authentication |
+| Phase 04 | ✅ Completed | Frontend Authentication |
 | Phase 05 | ⬜ Not Started | Project Management |
 | Phase 06 | ⬜ Not Started | Repository Upload |
 | Phase 07 | ⬜ Not Started | MS1 ↔ MS2 Communication |

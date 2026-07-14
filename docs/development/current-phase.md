@@ -2,11 +2,11 @@
 
 Current Phase
 
-Phase 04 — Frontend Authentication
+Phase 05 — Project Management
 
 Phase File
 
-docs/development/phases/phase-04-frontend-authentication.md
+docs/development/phases/phase-05-project-management.md
 
 Milestone
 
@@ -18,7 +18,7 @@ Status
 
 Branch
 
-feature/phase-04-frontend-authentication
+feature/phase-05-project-management
 
 Rule
 
