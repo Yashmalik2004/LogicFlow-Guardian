@@ -13,3 +13,8 @@ dist
 build
 
 coverage
+venv/
+.venv/
+.pytest_cache/
+.idea/
+.vscode/
