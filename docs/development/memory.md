@@ -18,7 +18,7 @@ Milestone 2
 
 Current Phase
 
-Phase 04 — Frontend Authentication
+Phase 05 — Project & Repository Management
 
 ---
 
@@ -28,6 +28,7 @@ Phase 04 — Frontend Authentication
 - Phase 02 — MS2 Foundation ✅
 - Phase 03 — Authentication ✅
 - Phase 04 — Frontend Authentication ✅
+- Phase 05 — Project & Repository Management ✅
 
 ---
 
@@ -255,6 +256,56 @@ Notes
 
 ---
 
+## Phase 05
+
+Status
+
+Completed ✅
+
+Files Created
+
+- ms1-core-api/src/models/project.model.ts (ProjectModel with CRUD + soft delete)
+- ms1-core-api/src/services/project.service.ts (ProjectService with ownership enforcement)
+- ms1-core-api/src/controllers/project.controller.ts (ProjectController with validation)
+- ms1-core-api/src/routes/project.routes.ts (ProjectRoutes mounted at /api/projects)
+
+Files Modified
+
+- ms1-core-api/src/config/database.ts (added Project table CREATE TABLE IF NOT EXISTS)
+- ms1-core-api/src/app.ts (registered projectRouter on /api/projects)
+
+APIs Implemented
+
+- POST /api/projects — Create project (JWT required)
+- GET /api/projects — List user's own projects (JWT required)
+- GET /api/projects/:id — Get single project (JWT required, 403 if not owner)
+- PUT /api/projects/:id — Update project (JWT required, 403 if not owner)
+- DELETE /api/projects/:id — Soft-delete project (JWT required, 403 if not owner)
+
+Database Changes
+
+- "Project" table created with fields: project_id, user_id (FK→User), repo_name, repo_url, branch, description, repository_type, status, created_at, updated_at
+- Soft delete implemented via status = 'DELETED'
+- Ownership enforced at service layer before any mutation
+
+Commit
+
+feat(project): implement project CRUD with JWT protection and ownership enforcement
+
+Notes
+
+- All APIs follow the standard { success, message, data } response format per conventions.md.
+- Business logic lives entirely in ProjectService; ProjectController remains thin.
+- express-validator used for request validation (reused from Phase 03, no new dependencies needed).
+- GitHub URL validated with isURL() when provided; optional per phase spec.
+- defaultBranch defaults to 'main' when not provided.
+- Soft delete used (status='DELETED'); hard delete not used.
+- TypeScript strict compile (tsc --noEmit) passes with zero errors.
+- Server started, PostgreSQL connected, Project table created successfully.
+- Existing auth endpoints (/api/auth/*) are fully intact.
+
+---
+
 
 None
 
@@ -262,14 +313,21 @@ None
 
 # Pending Work
 
-- Authentication
-- Frontend Authentication
-- Project Management
-- Repository Upload
-- Service Communication
-- Basic Agent
-- Analysis Workflow
-- Dummy Report
+- Analysis Job Queue (Redis + BullMQ)
+- MS1 ↔ MS2 Job Communication
+- Repository Storage & Retrieval
+- Repository Parser
+- Knowledge Graph Builder (Neo4j)
+- LangGraph Planner Agent
+- Docker Runner Service
+- Dynamic Test Executor
+- Reflection Agent
+- Report Generator
+- Webhook & Real-Time Progress Updates
+- Report Viewer & Knowledge Graph UI
+- Logging, Metrics & Observability
+- Deployment & CI/CD
+- Production Hardening & Performance
 
 ---
 

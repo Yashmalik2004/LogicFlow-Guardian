@@ -2,23 +2,28 @@
 
 ## Active Phase
 
-Phase 05 — Project & Repository Management
+Phase 05B — Frontend Project Dashboard
 
 Reference:
 
-development/phases/phase-05-project-repository-management.md
+development/phases/phase-05B-project-dashboard-ui.md
 
 ---
 
 ## Objective
 
-Implement project management within MS1.
+Build the frontend interface for project management using the existing MS1 Project APIs.
 
-Authenticated users should be able to create, list, retrieve, update, and delete projects.
+This phase should allow authenticated users to:
 
-At this stage, only repository metadata should be stored.
+- View all their projects
+- Create a new project
+- Edit an existing project
+- Delete a project
 
-Repository contents must NOT be downloaded, cloned, uploaded, or analyzed.
+The frontend must communicate only with MS1.
+
+No repository uploads or AI analysis should be implemented.
 
 ---
 
@@ -28,15 +33,16 @@ Implement ONLY the deliverables defined in the referenced phase document.
 
 Do NOT implement:
 
-- File uploads
+- Repository upload
+- ZIP upload
 - Git cloning
-- Queue creation
+- Analysis queue
 - MS2 communication
-- Repository parsing
 - AI analysis
-- Docker execution
 - WebSockets
 - Webhooks
+- Analysis Progress page
+- Report page
 
 Stop immediately after the completion checklist has been satisfied.
 
