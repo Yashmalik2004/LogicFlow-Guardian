@@ -39,6 +39,22 @@ export async function connectDatabase(): Promise<void> {
       );
     `);
 
+    // Create the "Analysis" table if it doesn't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "Analysis" (
+        analysis_id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES "Project"(project_id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES "User"(user_id) ON DELETE CASCADE,
+        bull_job_id VARCHAR(255),
+        status VARCHAR(30) NOT NULL DEFAULT 'QUEUED',
+        queue_position INTEGER,
+        started_at TIMESTAMP WITH TIME ZONE,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     logger.info('Database tables verified/created successfully.');
   } catch (error) {
     logger.error('Database initialization failed:', error);
