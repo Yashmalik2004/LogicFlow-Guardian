@@ -18,7 +18,7 @@ Milestone 2
 
 Current Phase
 
-Phase 05 — Project & Repository Management
+Phase 05B — Frontend Project Dashboard
 
 ---
 
@@ -29,6 +29,7 @@ Phase 05 — Project & Repository Management
 - Phase 03 — Authentication ✅
 - Phase 04 — Frontend Authentication ✅
 - Phase 05 — Project & Repository Management ✅
+- Phase 05B — Frontend Project Dashboard ✅
 
 ---
 
@@ -308,6 +309,57 @@ Notes
 
 
 None
+
+---
+
+## Phase 05B
+
+Status
+
+Completed ✅
+
+Files Created
+
+- frontend/lib/projectService.ts (API layer: getProjects, createProject, updateProject, deleteProject)
+- frontend/components/LoadingSpinner.tsx
+- frontend/components/ErrorBanner.tsx
+- frontend/components/EmptyState.tsx
+- frontend/components/DashboardHeader.tsx
+- frontend/components/ProjectCard.tsx
+- frontend/components/ProjectList.tsx
+- frontend/components/CreateProjectModal.tsx
+- frontend/components/EditProjectModal.tsx
+- frontend/components/DeleteProjectModal.tsx
+- frontend/styles/dashboard.css
+
+Files Modified
+
+- frontend/app/pages/Dashboard.tsx (replaced placeholder with full project dashboard)
+
+Features Implemented
+
+- Dashboard page with header, project count, and project grid
+- Create Project modal with validation (name required, type enum, URL format check)
+- Edit Project modal (repository type read-only per spec)
+- Delete Project confirmation modal
+- Empty state when no projects exist
+- Loading spinner while fetching
+- Error banner with dismiss on API failures
+- All API calls go through projectService.ts, never directly in components
+- Logout still works via DashboardHeader
+
+Commit
+
+feat(frontend): implement project dashboard with full CRUD UI
+
+Notes
+
+- TypeScript strict compile (tsc --noEmit) passes with zero errors.
+- Phase spec listed .jsx but codebase uses .tsx; .tsx used for consistency.
+- CSS lives in styles/dashboard.css (auth.css untouched).
+- No Redux or external state library introduced.
+- No analysis, uploads, WebSockets, or webhooks implemented.
+- All communication is with MS1 only.
 
 ---
 
