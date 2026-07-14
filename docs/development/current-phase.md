@@ -2,22 +2,28 @@
 
 Current Phase
 
-Phase 03 — Authentication
+Phase 04 — Frontend Authentication
 
 Phase File
 
-docs/development/phases/phase-03-authentication.md
+docs/development/phases/phase-04-frontend-authentication.md
+
+Milestone
+
+Milestone 2
 
 Status
 
 ⬜ Not Started
 
+Branch
 
-Started
-
-15 July 2026
+feature/phase-04-frontend-authentication
 
 Rule
 
-Read the phase file above and implement ONLY its deliverables.
-Stop immediately after the completion criteria are satisfied.
+Read the phase file referenced above and implement ONLY its deliverables.
+
+Do not implement future phases.
+
+Stop immediately after the completion checklist is satisfied.

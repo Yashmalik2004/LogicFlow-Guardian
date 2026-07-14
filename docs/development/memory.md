@@ -177,23 +177,33 @@ Notes
 
 Status
 
-Not Started
+Completed ✅
 
 Files Created
 
-None
+- ms1-core-api/src/models/user.model.ts
+- ms1-core-api/src/services/auth.service.ts
+- ms1-core-api/src/middleware/auth.middleware.ts
+- ms1-core-api/src/controllers/auth.controller.ts
+- ms1-core-api/src/routes/auth.routes.ts
 
 Files Modified
 
-None
+- ms1-core-api/package.json (added dependencies: bcrypt, jsonwebtoken, express-validator and types)
+- ms1-core-api/src/config/database.ts (added automatic creation of the "User" table on startup)
+- ms1-core-api/src/app.ts (registered authRouter on /api/auth)
 
 Commit
 
-—
+feat(auth): implement JWT authentication
 
 Notes
 
-—
+- Installed bcrypt, jsonwebtoken, and express-validator with TypeScript declarations.
+- Updated database connection initialization to run query ensuring "User" table exists. Wrap User table in quotes as it is a PostgreSQL reserved keyword.
+- Built AuthService and UserModel for password encryption, comparison, and token creation.
+- AuthMiddleware verifies incoming authorization tokens, supporting both Bearer format and raw tokens.
+- Fully verified all endpoints (Register, Login, Me) using a Node.js test script verifying success/error response formats.
 
 ---
 
