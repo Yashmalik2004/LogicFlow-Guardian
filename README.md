@@ -309,8 +309,8 @@ Implementation of the React frontend, Express API, and FastAPI AI service.
 | Member | Responsibility |
 |---------|----------------|
 | Yash | AI Architecture, LangGraph, FastAPI |
-| Sneha | Frontend Development |
-| Vansh | Express API & Database |
+| Vansh | Frontend Development |
+| Sneha | Express API & Database |
 
 ---
 
