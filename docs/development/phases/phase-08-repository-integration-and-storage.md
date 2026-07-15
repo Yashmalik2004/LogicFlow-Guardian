@@ -2,21 +2,21 @@
 
 ## Objective
 
-Implement the repository intake layer.
+Implement the complete repository intake pipeline.
 
-This phase is responsible for obtaining the repository associated with an analysis request and storing it inside the platform's controlled workspace.
+MS2 should receive an analysis request, clone the GitHub repository into a dedicated workspace, validate the repository, detect its technology stack, and persist metadata required for future analysis.
 
-After this phase, every analysis should have a local repository path ready for future parsing.
+This phase prepares repositories for parsing.
 
-No repository analysis should occur.
+No AI analysis is performed.
 
 ---
 
 # Purpose
 
-The AI cannot analyze code that does not exist locally.
+Every analysis begins with obtaining a local copy of the repository.
 
-This phase prepares repositories for later phases.
+Future phases will operate exclusively on this cloned workspace.
 
 Workflow
 
@@ -24,342 +24,50 @@ Analysis Request
 
 ↓
 
-Receive Repository Information
+GitHub Repository
 
 ↓
 
-Validate Repository Source
+Clone Repository
 
 ↓
 
-Clone or Extract Repository
+Validate Structure
 
 ↓
 
-Store Repository
+Detect Language & Framework
 
 ↓
 
-Update Database
+Store Metadata
 
 ↓
 
-Ready For Parser
+Ready For Parsing
 
 ---
 
 # Scope
 
-Implement:
+Implement only
 
-- GitHub repository cloning
-- ZIP archive extraction
-- Repository workspace creation
-- Repository metadata updates
+- Repository cloning
+- Workspace management
 - Repository validation
-- Cleanup on failure
+- Language detection
+- Framework detection
+- Repository metadata storage
 
-Do NOT implement:
+Do NOT implement
 
-- Parser
-- Knowledge Graph
+- Repository parsing
+- Knowledge graph
+- Business rule extraction
 - LangGraph
-- AI
 - Docker
 - Dynamic execution
-
----
-
-# Repository Sources
-
-Support two repository types.
-
-## GitHub
-
-Clone using Git.
-
-Store inside
-
-workspace/
-
-repositories/
-
-<analysisId>/
-
----
-
-## ZIP Upload
-
-Accept uploaded ZIP archive.
-
-Extract into
-
-workspace/
-
-repositories/
-
-<analysisId>/
-
-Delete ZIP after extraction.
-
----
-
-# Repository Workspace
-
-All repositories should be stored outside the application source code.
-
-Example
-
-workspace/
-
-repositories/
-
-42/
-
-bank-api/
-
-package.json
-
-src/
-
-README.md
-
-Never clone into
-
-ms1/
-
-ms2/
-
-frontend/
-
----
-
-# Database
-
-Extend ANALYSIS
-
-Add
-
-repository_path
-
-repository_name
-
-repository_type
-
-repository_status
-
-Suggested status values
-
-PENDING
-
-CLONING
-
-READY
-
-FAILED
-
----
-
-# Repository Validation
-
-For GitHub
-
-Validate
-
-Repository URL
-
-↓
-
-Reachable
-
-↓
-
-Clone succeeds
-
-For ZIP
-
-Validate
-
-ZIP exists
-
-↓
-
-Extract succeeds
-
-↓
-
-Contains project files
-
-Reject empty archives.
-
----
-
-# GitHub Cloning
-
-Use Git.
-
-Do NOT execute shell commands directly from controllers.
-
-Create
-
-RepositoryService
-
-Responsibilities
-
-- Clone repository
-- Validate repository
-- Return local path
-
----
-
-# ZIP Extraction
-
-Create
-
-ZipService
-
-Responsibilities
-
-- Validate archive
-- Extract archive
-- Delete temporary archive
-- Return repository path
-
----
-
-# Workspace Structure
-
-Example
-
-workspace/
-
-repositories/
-
-analysis-42/
-
-repository/
-
-package.json
-
-src/
-
-README.md
-
-logs/
-
-Temporary files should never remain after failure.
-
----
-
-# Error Handling
-
-Git clone failure
-
-↓
-
-repository_status
-
-FAILED
-
-↓
-
-Analysis
-
-FAILED
-
-↓
-
-Log error
-
-Invalid ZIP
-
-↓
-
-Reject
-
-↓
-
-400 Bad Request
-
-Workspace creation failure
-
-↓
-
-500 Internal Server Error
-
-Cleanup partially created directories.
-
----
-
-# Logging
-
-Log
-
-Repository Intake Started
-
-↓
-
-Workspace Created
-
-↓
-
-Repository Cloned
-
-or
-
-ZIP Extracted
-
-↓
-
-Repository Ready
-
-↓
-
-Database Updated
-
-↓
-
-Phase Complete
-
----
-
-# Architecture Notes
-
-Repository storage belongs entirely to MS2.
-
-MS1 never accesses repository files.
-
-MS1 only stores metadata.
-
-Future phases receive
-
-repository_path
-
-from ANALYSIS.
-
----
-
-# Security Rules
-
-Reject
-
-Private repositories without credentials.
-
-Reject
-
-Unsupported repository URLs.
-
-Reject
-
-Archives larger than configured limit.
-
-Prevent
-
-Zip Slip attacks.
-
-Normalize extraction paths.
-
-Never overwrite existing repositories.
+- Report generation
 
 ---
 
@@ -369,21 +77,16 @@ Modify
 
 ms2-agent/
 
-app/
+- app
+- services
+- tools
+- parser (only repository discovery)
+- schemas
+- config
 
-tools/
+Database models
 
-services/
-
-config/
-
-schemas/
-
-workspace/
-
-Database migrations
-
-Do not modify
+Do NOT modify
 
 frontend/
 
@@ -391,23 +94,288 @@ infra/
 
 ---
 
+# Repository Workspace
+
+Create a workspace directory
+
+```
+/workspace/
+```
+
+Each analysis should create
+
+```
+workspace/
+
+└── analysis-{analysisId}/
+```
+
+Example
+
+```
+workspace/
+
+└── analysis-42/
+```
+
+The cloned repository should be stored here.
+
+---
+
+# Repository Cloning
+
+Clone using the GitHub URL received from MS1.
+
+Supported repositories
+
+- Public GitHub repositories
+
+Private repositories are out of scope.
+
+Do not support ZIP uploads.
+
+---
+
+# Validation
+
+After cloning
+
+Verify
+
+- Repository cloned successfully
+- Git metadata exists
+- Files are readable
+- Repository is not empty
+
+If validation fails
+
+Update analysis status
+
+FAILED
+
+Return appropriate error.
+
+---
+
+# Repository Discovery
+
+Detect
+
+Programming Language
+
+Examples
+
+- JavaScript
+- TypeScript
+- Python
+- Java
+- Go
+
+Framework
+
+Examples
+
+- Express
+- FastAPI
+- Spring Boot
+- Django
+- Flask
+
+Detection should rely on common project files.
+
+Examples
+
+Node
+
+package.json
+
+Python
+
+requirements.txt
+
+pyproject.toml
+
+Java
+
+pom.xml
+
+build.gradle
+
+Go
+
+go.mod
+
+Do NOT parse source code.
+
+Only inspect project metadata.
+
+---
+
+# Database
+
+Extend ANALYSIS
+
+Add nullable fields
+
+- repository_path
+- repository_name
+- language
+- framework
+- repository_size
+
+Store detected information.
+
+---
+
+# Repository Service
+
+Create
+
+RepositoryIntakeService
+
+Responsibilities
+
+- Clone repository
+- Validate repository
+- Detect language
+- Detect framework
+- Update database
+
+Single responsibility only.
+
+---
+
+# Analysis Status
+
+Extend status values
+
+Current
+
+- QUEUED
+- PROCESSING
+- DISPATCHED
+- COMPLETED
+- FAILED
+
+Add
+
+- CLONING
+- VALIDATING
+- READY_FOR_PARSING
+
+Do not add parsing-related statuses yet.
+
+---
+
+# Logging
+
+Log
+
+Repository cloning started
+
+↓
+
+Repository cloned
+
+↓
+
+Validation successful
+
+↓
+
+Language detected
+
+↓
+
+Framework detected
+
+↓
+
+Repository ready
+
+---
+
+# Error Handling
+
+Repository not found
+
+↓
+
+404
+
+Invalid GitHub URL
+
+↓
+
+400
+
+Git clone failure
+
+↓
+
+FAILED
+
+Unsupported repository
+
+↓
+
+FAILED
+
+Workspace creation failure
+
+↓
+
+500
+
+---
+
+# Business Rules
+
+One analysis owns one cloned repository.
+
+Each analysis has its own isolated workspace.
+
+Repositories are never shared between analyses.
+
+Existing workspaces should not be reused.
+
+---
+
+# Security
+
+Clone only from GitHub.
+
+Reject invalid URLs.
+
+Never execute repository code.
+
+Never install dependencies.
+
+Never run scripts.
+
+Only download files.
+
+---
+
 # Testing Checklist
 
-✓ GitHub repository cloned
-
-✓ ZIP repository extracted
+✓ Public repository cloned successfully
 
 ✓ Workspace created
 
-✓ Repository path stored
+✓ Metadata stored
 
-✓ Repository status updated
+✓ Language detected
 
-✓ Invalid repositories rejected
+✓ Framework detected
 
-✓ Cleanup works
+✓ Invalid repository rejected
 
-✓ Existing MS1 ↔ MS2 communication still works
+✓ Missing repository handled
+
+✓ Analysis status updated correctly
+
+✓ Existing queue and dispatch continue working
 
 ---
 
@@ -419,11 +387,11 @@ User
 
 ↓
 
-Create Analysis
+Start Analysis
 
 ↓
 
-Queue
+MS1 Queue
 
 ↓
 
@@ -433,40 +401,40 @@ MS2
 
 Clone Repository
 
-or
+↓
 
-Extract ZIP
+Validate Repository
 
 ↓
 
-Store Repository
+Detect Language
 
 ↓
 
-Update ANALYSIS
-
-repository_status
-
-READY
+Detect Framework
 
 ↓
 
-Ready for Parser
+Update Analysis
 
-No repository parsing occurs.
+↓
+
+READY_FOR_PARSING
+
+No source code parsing occurs.
 
 ---
 
 # Completion Checklist
 
+- Workspace implemented
 - Repository cloning implemented
-- ZIP extraction implemented
-- Workspace structure implemented
-- Repository metadata stored
-- Database updated
 - Validation completed
-- Error handling completed
+- Language detection implemented
+- Framework detection implemented
+- Metadata stored
 - Logging completed
+- Error handling completed
 - Existing functionality still works
 - memory.md updated
 

@@ -6,19 +6,17 @@ Phase 08 — Repository Intake & Storage
 
 Reference:
 
-development/phases/phase-08-repository-intake-and-storage.md
+development/phases/phase-08-repository-intake-storage.md
 
 ---
 
 ## Objective
 
-Implement the complete repository intake pipeline.
+Implement repository intake from GitHub.
 
-MS2 should receive an analysis request, obtain the repository (GitHub URL or ZIP), securely store it inside the repository workspace, and update the analysis record.
+When an analysis is dispatched to MS2, the AI service should clone the GitHub repository into its local workspace, validate it, detect the project type, and persist repository metadata.
 
-No parsing or AI analysis should be performed during this phase.
-
-The repository must simply become available for future processing.
+No parsing, knowledge graph generation, AI reasoning, or Docker execution should occur.
 
 ---
 
@@ -28,16 +26,15 @@ Implement ONLY the deliverables defined in the referenced phase document.
 
 Do NOT implement:
 
-- Repository parsing
-- AST analysis
-- Knowledge Graph generation
+- AST parsing
+- Knowledge graph generation
 - LangGraph
 - Docker execution
 - Dynamic testing
 - Reflection
 - Report generation
-- Webhooks
 - WebSockets
+- Webhooks
 
 Stop immediately after the completion checklist has been satisfied.
 
