@@ -2,23 +2,23 @@
 
 ## Active Phase
 
-Phase 07 — MS1 ↔ MS2 Job Communication
+Phase 08 — Repository Intake & Storage
 
 Reference:
 
-development/phases/phase-07-ms1-ms2-job-communication.md
+development/phases/phase-08-repository-intake-and-storage.md
 
 ---
 
 ## Objective
 
-Connect MS1 and MS2 through internal REST communication.
+Implement the complete repository intake pipeline.
 
-When a BullMQ worker processes an analysis job, it should dispatch the job to MS2.
+MS2 should receive an analysis request, obtain the repository (GitHub URL or ZIP), securely store it inside the repository workspace, and update the analysis record.
 
-MS2 should acknowledge receipt of the job.
+No parsing or AI analysis should be performed during this phase.
 
-No repository processing or AI analysis should occur.
+The repository must simply become available for future processing.
 
 ---
 
@@ -28,17 +28,16 @@ Implement ONLY the deliverables defined in the referenced phase document.
 
 Do NOT implement:
 
-- Repository storage
-- Git cloning
 - Repository parsing
+- AST analysis
+- Knowledge Graph generation
 - LangGraph
-- Neo4j
-- Docker
+- Docker execution
 - Dynamic testing
 - Reflection
+- Report generation
 - Webhooks
 - WebSockets
-- Report generation
 
 Stop immediately after the completion checklist has been satisfied.
 
