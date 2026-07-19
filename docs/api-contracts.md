@@ -473,7 +473,7 @@ Response
 ## Start AI Analysis
 
 ```
-POST /internal/analyze
+POST /internal/analysis/start
 ```
 
 Request
@@ -482,7 +482,11 @@ Request
 {
   "analysisId": 5001,
   "projectId": 101,
-  "repoPath": "/uploads/project.zip"
+  "userId": 1,
+  "repoUrl": "https://github.com/example/bank-api",
+  "repoName": "Bank API",
+  "branch": "main",
+  "repositoryType": "github"
 }
 ```
 
@@ -490,54 +494,67 @@ Response
 
 ```json
 {
-  "status": "received"
+  "accepted": true,
+  "message": "Analysis job received. Repository intake started."
 }
 ```
 
 ---
 
-## Analysis Progress
+## Webhook: Analysis Status Update
 
 ```
-GET /internal/analysis/{analysisId}
+POST /internal/webhook/analysis-status
 ```
 
-Response
+Called by MS2 to report progress or execution state changes back to MS1. MS1 then updates the `"Analysis"` table.
+
+### Headers
+- `X-Webhook-Secret`: Optional shared secret string (must match `MS2_WEBHOOK_SECRET` configuration on both services).
+
+### Request (Standard State Transition)
 
 ```json
 {
   "analysisId": 5001,
-  "status": "Running",
-  "progress": 75,
-  "currentStage": "Reflection"
+  "status": "CLONING"
 }
 ```
 
----
-
-## Submit Final Report
-
-```
-POST /internal/report
-```
-
-Request
+### Request (Intake Complete with Metadata)
 
 ```json
 {
   "analysisId": 5001,
-  "summary": {},
-  "findings": []
+  "status": "READY_FOR_PARSING",
+  "repositoryPath": "/workspace/analysis-5001",
+  "repositoryName": "bank-api",
+  "language": "TypeScript",
+  "framework": "Express",
+  "repositorySize": 123456
 }
 ```
 
-Response
+### Request (Failure Details)
 
 ```json
 {
-  "status": "stored"
+  "analysisId": 5001,
+  "status": "FAILED",
+  "errorMessage": "git clone failed: exit status 128"
 }
 ```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Status update applied.",
+  "data": {}
+}
+```
+
 
 ---
 
@@ -627,3 +644,130 @@ must not break existing contracts.
 No developer or AI assistant may change an endpoint, request body, response body, or status code without updating this document first.
 
 This document is the single source of truth for all REST communication.
+
+---
+
+# Internal API Contract Freeze
+
+This section formally freezes the internal API contract and communication rules between MS1 and MS2 to prevent future updates (Parser, Knowledge Graph, Planner, Docker Runner, Reflection, Reports, etc.) from introducing breaking changes.
+
+## 1. MS1 → MS2 Request Contract
+
+The payload structure for the internal analysis dispatch endpoint:
+`POST /internal/analysis/start`
+is frozen.
+
+### Request Body Schema
+```json
+{
+  "analysisId": 5001,
+  "projectId": 101,
+  "userId": 1,
+  "repoUrl": "https://github.com/example/bank-api",
+  "repoName": "Bank API",
+  "branch": "main",
+  "repositoryType": "github"
+}
+```
+
+### Integration Rules
+- **Business Data Ownership**: MS1 is responsible for gathering and supplying all business and repository metadata.
+- **No Database Queries**: MS2 must never query MS1's database for additional project or job information.
+- **Field Modification Restriction**: Existing field names must never be renamed or deleted.
+- **Type Compatibility**: Existing field types must remain backwards compatible.
+- **Payload Extension**: New optional fields may be appended to the payload in future phases.
+- **Forward & Backward Compatibility**: Any future extension must remain backwards compatible.
+
+---
+
+## 2. MS2 → MS1 Webhook Contract
+
+The payload structure for the internal status update webhook:
+`POST /internal/webhook/analysis-status`
+is frozen.
+
+### Supported Fields
+- `analysisId` (Integer, Required)
+- `status` (String, Required)
+- `repositoryPath` (String, Optional)
+- `repositoryName` (String, Optional)
+- `language` (String, Optional)
+- `framework` (String, Optional)
+- `repositorySize` (Integer/BigInt, Optional)
+- `errorMessage` (String, Optional)
+
+### Integration Rules
+- **Field Deletion/Rename Restriction**: Existing webhook fields must never be renamed or removed.
+- **Extension Policy**: Future stages in the pipeline may append additional optional fields to this payload.
+- **Forward Compatibility**: MS1 must ignore any unknown properties in the webhook payload.
+- **Required Fields**: MS2 must always include `analysisId` and `status` in every webhook request.
+
+---
+
+## 3. API Evolution Rules
+
+To scale the LogicFlow Guardian architecture gracefully without breaking integration boundaries:
+- **Append Only**: Always extend JSON payloads by adding new optional fields at the end.
+- **No Breaking Changes**: Never change the type of existing fields or rename JSON properties.
+- **URL Stability**: Never alter internal endpoint routes or request/response formats without first updating this specification document.
+- **Backward Compatibility**: Ensure that all changes to API boundaries maintain backward compatibility.
+
+---
+
+## 4. Database Ownership Reminder
+
+To ensure strict data coupling boundaries:
+- **MS1 owns**: `User`, `Project`, `Analysis`, and `Report` (future).
+- **MS2 owns**: Execution-state tables (currently `agent_run` table).
+- **Neo4j owns**: The knowledge graph.
+- **Zero Coupling**: Cross-database SQL queries are strictly forbidden.
+- **Pure API Communication**: All interaction between MS1 and MS2 must occur exclusively through HTTP API calls and webhook callbacks.
+
+---
+
+## 5. Status Enum Documentation
+
+The following analysis status values are officially supported across the pipeline:
+- `QUEUED`: Job is created and waiting in BullMQ queue (MS1 state).
+- `PROCESSING`: Job has been picked up by the Analysis Worker (MS1 state).
+- `DISPATCHED`: Job has been forwarded to MS2 API (MS1 state).
+- `RECEIVED`: MS2 has accepted the job and created the internal state record (MS2 state).
+- `CLONING`: MS2 is cloning the target git repository (MS2 state).
+- `VALIDATING`: MS2 is performing basic workspace validation checks (MS2 state).
+- `READY_FOR_PARSING`: MS2 has completed the repository intake, extracted metadata, and is ready to parse (MS2 state).
+- `COMPLETED`: The analysis run finished successfully (Final state).
+- `FAILED`: An execution error occurred during the analysis run (Final state).
+
+*Note: Future phases may introduce additional status values (e.g. for parsing, test generation, and docker runner stages), but existing status values must remain valid.*
+
+---
+
+## 6. Versioning Policy
+
+- **Current Version**: The internal communication API is versioned at `v1`.
+- **Incremental Expansion**: Future extensions (Parser, Knowledge Graph, Planner, Docker Runner, Reflection, and Report Generation) must extend the current contract rather than replacing it.
+- **Breaking Changes**: Any breaking changes that cannot be implemented in a backwards-compatible manner require a new API version (e.g., `v2`).
+
+---
+
+# Appendix: Database Architecture & Ownership
+
+To guarantee strict service separation, LogicFlow Guardian employs a **Database-per-Service** architecture. The shared database architecture has been completely removed.
+
+### Service Databases
+1. **MS1 PostgreSQL Database**: Handles core business data (`User`, `Project`, `Analysis`, `Report`).
+2. **MS2 PostgreSQL Database**: Handles local agent execution state (`agent_run`).
+
+### Table Ownership
+- **MS1**: Owns `User`, `Project`, `Analysis`, `Report` tables.
+- **MS2**: Owns `agent_run` table.
+- **Neo4j Graph Database**: Owns the knowledge graph nodes/relationships (Controller, Endpoint, Service, Model, etc.) and is written to exclusively by MS2.
+
+### Cross-Service Communication
+- MS2 never queries or updates MS1 tables directly.
+- MS1 passes all required project/analysis parameters inside the body of `POST /internal/analysis/start`.
+- MS2 sends state updates and metadata back to MS1 via webhook callbacks (`POST /internal/webhook/analysis-status`).
+
+### Migration Process
+- **MS1 Database**: Table schemas are initialized via MS1-specific migration pathways on the MS1 DB host.
+- **MS2 Database**: The database table structure is defined by the SQL migration file `ms2-agent/app/config/migrations/001_create_agent_run.sql`. This must be initialized on the MS2 DB host. It is automatically initialized on MS2 application startup (via SQLAlchemy `create_all()`) or can be run manually using a PostgreSQL client connection.

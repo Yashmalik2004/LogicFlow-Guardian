@@ -5,10 +5,21 @@ import { AnalysisModel } from '../models/analysis.model';
 import { dispatchAnalysisToMs2 } from '../services/dispatch.service';
 import { logger } from '../utils/logger';
 
+/**
+ * Full job data shape stored in BullMQ.
+ *
+ * Includes all project metadata required by MS2 so that MS2 never needs to
+ * query MS1's database. MS1 fetches this data before enqueueing.
+ */
 export interface AnalysisJobData {
   analysisId: number;
   projectId: number;
   userId: number;
+  // Project metadata — forwarded to MS2 in the dispatch payload
+  repoUrl: string;
+  repoName: string;
+  branch: string;
+  repositoryType: 'github' | 'zip';
 }
 
 const connection: ConnectionOptions = {
@@ -29,7 +40,7 @@ const connection: ConnectionOptions = {
 };
 
 async function processAnalysisJob(job: Job<AnalysisJobData>): Promise<void> {
-  const { analysisId, projectId, userId } = job.data;
+  const { analysisId, projectId, userId, repoUrl, repoName, branch, repositoryType } = job.data;
 
   logger.info(
     `Worker Started — analysisId=${analysisId} projectId=${projectId} userId=${userId}`
@@ -42,10 +53,20 @@ async function processAnalysisJob(job: Job<AnalysisJobData>): Promise<void> {
 
   logger.info(`[Worker] Analysis ${analysisId} — Status: PROCESSING`);
 
-  // Dispatch to MS2 — implements retry + timeout logic internally
-  await dispatchAnalysisToMs2({ analysisId, projectId, userId });
+  // Dispatch to MS2 — pass the full payload so MS2 never queries MS1's database.
+  // Implements retry + timeout logic internally.
+  await dispatchAnalysisToMs2({
+    analysisId,
+    projectId,
+    userId,
+    repoUrl,
+    repoName,
+    branch,
+    repositoryType,
+  });
 
-  // Mark as DISPATCHED after successful ACK from MS2
+  // Mark as DISPATCHED after successful ACK from MS2.
+  // Further status updates (CLONING, VALIDATING, etc.) arrive via webhook from MS2.
   await AnalysisModel.updateStatus(analysisId, 'DISPATCHED');
 
   logger.info(`[Worker] Analysis ${analysisId} — Status: DISPATCHED`);

@@ -31,11 +31,11 @@ The following diagram illustrates the complete architecture.
 |------------|----------------|
 | React Frontend | Authentication, dashboard, repository upload, live analysis progress, knowledge graph visualization, report viewing |
 | MS1 (Express.js) | Authentication, JWT, project management, repository metadata, report storage, queue management, webhook receiver, websocket server |
-| PostgreSQL (MS1) | Users, Projects, Repository Metadata, Analysis Jobs, Reports, Findings |
+| PostgreSQL (MS1) | Users, Projects, Analysis Jobs, Reports (future), and findings |
 | Redis | Analysis job queue using BullMQ |
 | BullMQ | Job scheduling, retries, concurrency management |
 | MS2 (FastAPI) | Repository parsing, AI workflow execution, LangGraph orchestration, Docker execution, reflection, report generation |
-| PostgreSQL (MS2) | Analysis sessions, execution logs, planner state, LangGraph state, token usage, reflection history |
+| PostgreSQL (MS2) | Pipeline AgentRun execution records and execution logs |
 | Neo4j | Repository knowledge graph |
 | Dockerode | Starts and destroys isolated runner containers |
 | Runner Images | Secure execution environments for Node, Python and Java projects |
@@ -103,45 +103,52 @@ Each microservice owns and manages its own persistence layer.
 
 No service directly accesses another service's database.
 
-Communication occurs only through APIs or asynchronous events.
+Communication occurs only through APIs or asynchronous webhook callbacks.
+
+---
+
+## Shared Database Architecture Removal
+
+Previously, a shared-database architecture was utilized. This was refactored and removed in favor of a strictly decoupled Database-per-Service architecture:
+- MS1 and MS2 have completely separate database connection configurations (`DATABASE_URL` vs `MS2_DATABASE_URL`).
+- MS2 has no access/visibility to MS1 business tables (`User`, `Project`, `Analysis`, `Report`).
+- The shared database connection configurations have been completely eliminated.
+
+---
+
+## Migration Process
+
+- **MS1**: Table schemas are initialized on MS1's own database instance.
+- **MS2**: Uses the raw SQL migration script `app/config/migrations/001_create_agent_run.sql` applied against the MS2 database.
+- **Initialization**: MS2 database initialization is run automatically on startup via SQLAlchemy `create_all()` hook or manually via PostgreSQL client connection executing the SQL migration script.
 
 ---
 
 ## PostgreSQL (MS1)
 
-Stores permanent application data.
+Stores permanent application and business data.
 
 Includes:
 
 - Users
-- Projects
-- Repository Metadata
-- Analysis Jobs
-- Reports
-- Findings
+- Projects (owner, metadata, settings)
+- Analysis Jobs (cloning state, repository size, metadata, and status)
+- Reports (future)
+- Findings (future)
 - Authentication Sessions
-
-Historical reports are always served directly from this database.
 
 ---
 
 ## PostgreSQL (MS2)
 
-Stores temporary AI execution data.
+Stores internal execution and pipeline logs for the AI agent runner.
 
 Includes:
 
-- Analysis Sessions
-- Planner State
-- LangGraph State
-- Reflection History
-- Execution Logs
-- Prompt Versions
-- Token Usage
-- Runtime Metadata
-- Container Metadata
+- AgentRun (contains local status, cloned workspace path, repository size, detected language/framework, error messages)
+- Execution Logs (future)
 
-This database exists solely to support AI execution.
+This database exists solely to support local execution tracing. It is entirely separate from MS1's database.
 
 ---
 
@@ -202,39 +209,20 @@ This design enables thousands of queued analyses without blocking API requests.
 
 # MS1 ↔ MS2 Communication
 
-MS1 communicates with MS2 through REST APIs only for job submission.
-
-MS2 communicates back to MS1 using Webhooks.
+MS1 communicates with MS2 through internal REST APIs. MS2 communicates back to MS1 using Webhook status updates.
 
 Workflow:
 
-MS1
+```
+MS1 (Worker) ── POST /internal/analysis/start ──► MS2 (FastAPI)
+                     (Full Project Payload)            │
+                                                       │ (Intake background pipeline runs)
+                                                       ▼
+MS1 (DB update) ◄─── POST /internal/webhook/analysis-status ◄─── MS2
+```
 
-↓
+This eliminates direct database access and polling between services. MS1 remains the sole owner of the Analysis record status.
 
-POST /analysis
-
-↓
-
-Queue Job
-
-↓
-
-MS2 Worker
-
-↓
-
-Analysis Complete
-
-↓
-
-Webhook
-
-↓
-
-MS1 stores report
-
-This eliminates polling between services.
 
 ---
 
