@@ -1,17 +1,20 @@
 """
-Repository Intake Service — orchestrates the full intake pipeline.
+Repository Intake Service — orchestrates the full intake and parse pipeline.
 
 Pipeline:
-    1. Create AgentRun record in MS2's own database
-    2. Send CLONING webhook to MS1
-    3. Create workspace directory
-    4. Clone the repository via git
-    5. Send VALIDATING webhook to MS1
-    6. Validate the cloned repository (non-empty, .git present, readable)
-    7. Detect language and framework (metadata-only)
-    8. Compute repository size
-    9. Send READY_FOR_PARSING webhook to MS1 (with metadata)
-   10. Update AgentRun in MS2's own database
+    1.  Create AgentRun record in MS2's own database
+    2.  Send CLONING webhook to MS1
+    3.  Create workspace directory
+    4.  Clone the repository via git
+    5.  Send VALIDATING webhook to MS1
+    6.  Validate the cloned repository (non-empty, .git present, readable)
+    7.  Detect language and framework (metadata-only)
+    8.  Compute repository size
+    9.  Send READY_FOR_PARSING webhook to MS1 (with metadata)
+   10.  Update AgentRun in MS2's own database
+   11.  Run the Repository Parser Engine
+   12.  Save parser IR to workspace/analysis-{id}/parser_output.json
+   13.  Send COMPLETED webhook to MS1
 
 Data contract:
     - All project data (repoUrl, repoName, branch, repositoryType) arrives in
@@ -21,7 +24,6 @@ Data contract:
 
 This service has a single public entry point: run(analysis_id, project_id, payload).
 All errors are caught, logged, and result in FAILED webhooks to MS1.
-No source parsing, LangGraph, Docker, or Neo4j interaction occurs in the current phase.
 """
 import os
 import re
@@ -36,6 +38,8 @@ from app.models.agent_run_model import (
 from app.services import webhook_service
 from app.services.workspace_service import create_workspace
 from parser.repository_discovery import detect_language_and_framework
+from parser.engine import RepositoryParserEngine
+from graphrag.graph_builder import GraphBuilder
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -127,153 +131,22 @@ def _compute_directory_size(path: str) -> int:
 
 def run(analysis_id: int, project_id: int, payload: dict) -> None:
     """
-    Execute the full repository intake pipeline for the given analysis.
+    Execute the repository intake and analysis pipeline via LangGraph.
 
     Parameters
     ----------
     analysis_id:  MS1's Analysis record ID (used in webhooks, not for DB queries)
     project_id:   MS1's Project record ID (stored in AgentRun for reference)
     payload:      Full dispatch payload from MS1 — contains repoUrl, repoName,
-                  branch, repositoryType. MS2 uses this instead of querying MS1's DB.
-
-    Runs synchronously (intended to be called inside a FastAPI BackgroundTask).
-    All exceptions are caught and result in a FAILED webhook to MS1.
+                  branch, repositoryType.
     """
+    from graphs import run_analysis_workflow
+
     print(
-        f"[INFO] [Intake] Pipeline started — "
+        f"[INFO] [Intake] Initiating LangGraph analysis workflow — "
         f"analysis_id={analysis_id} project_id={project_id}"
     )
-
-    workspace_path: str | None = None
-
-    try:
-        # Step 1 — Create MS2's own AgentRun record
-        create_agent_run(analysis_id, project_id)
-
-        # Step 2 — Extract project metadata from the payload (NOT from MS1's DB)
-        repo_url: str = payload.get("repoUrl") or ""
-        repo_name: str = payload.get("repoName") or _extract_repo_name(repo_url)
-        branch: str = payload.get("branch") or "main"
-
-        if not repo_url:
-            raise ValueError(
-                f"Payload missing repoUrl for analysis_id={analysis_id}"
-            )
-
-        # Step 3 — Validate GitHub URL
-        _validate_github_url(repo_url)
-
-        # Step 4 — Notify MS1: status → CLONING
-        update_agent_run_status(analysis_id, "CLONING")
-        webhook_service.send_status_update(analysis_id, "CLONING")
-        print(f"[INFO] [Intake] Status → CLONING (analysis_id={analysis_id})")
-
-        # Step 5 — Create workspace
-        workspace_path = create_workspace(analysis_id)
-
-        # ----------------------------------------------------------------
-        # STAGE: Repository Cloning
-        # ----------------------------------------------------------------
-        print("[INFO] Repository cloning started...")
-        _clone_repository(repo_url, workspace_path)
-        print(f"[INFO] [Intake] Repository cloned: {workspace_path}")
-        print("[INFO] Repository cloning completed.")
-
-        # Step 6 — Notify MS1: status → VALIDATING
-        update_agent_run_status(analysis_id, "VALIDATING")
-        webhook_service.send_status_update(analysis_id, "VALIDATING")
-        print(f"[INFO] [Intake] Status → VALIDATING (analysis_id={analysis_id})")
-
-        # Step 7 — Validate repository
-        _validate_repository(workspace_path)
-
-        # Step 8 — Detect language and framework
-        language, framework = detect_language_and_framework(workspace_path)
-        print(
-            f"[INFO] [Intake] Detected — language={language} framework={framework}"
-        )
-
-        # Step 9 — Compute size
-        repo_size = _compute_directory_size(workspace_path)
-        print(f"[INFO] [Intake] Repository size: {repo_size} bytes")
-
-        # Step 10 — Persist metadata to MS2's own AgentRun table
-        update_agent_run_metadata(
-            analysis_id,
-            repository_path=workspace_path,
-            repository_name=repo_name,
-            language=language,
-            framework=framework,
-            repository_size=repo_size,
-        )
-        print(f"[INFO] [Intake] AgentRun metadata persisted (analysis_id={analysis_id})")
-
-        # Step 11 — Notify MS1: status → READY_FOR_PARSING (with metadata)
-        # MS1 will store this metadata in its own Analysis table via the webhook handler.
-        update_agent_run_status(analysis_id, "READY_FOR_PARSING")
-        webhook_service.send_status_update(
-            analysis_id,
-            "READY_FOR_PARSING",
-            repository_path=workspace_path,
-            repository_name=repo_name,
-            language=language,
-            framework=framework,
-            repository_size=repo_size,
-        )
-        print(
-            f"[INFO] [Intake] Status → READY_FOR_PARSING (analysis_id={analysis_id})"
-        )
-
-        # ----------------------------------------------------------------
-        # STAGE: Repository Parser
-        # ----------------------------------------------------------------
-        print("[INFO] Repository parser started...")
-        print("[INFO] Stage skipped (not implemented yet).")
-
-        # ----------------------------------------------------------------
-        # STAGE: Knowledge Graph Construction
-        # ----------------------------------------------------------------
-        print("[INFO] Knowledge graph construction started...")
-        print("[INFO] Stage skipped (not implemented yet).")
-
-        # ----------------------------------------------------------------
-        # STAGE: LangGraph Workflow
-        # ----------------------------------------------------------------
-        print("[INFO] LangGraph workflow started...")
-        print("[INFO] Stage skipped (not implemented yet).")
-
-        # ----------------------------------------------------------------
-        # STAGE: Report Generation
-        # ----------------------------------------------------------------
-        print("[INFO] Report generation started...")
-        print("[INFO] Stage skipped (not implemented yet).")
-
-        print(
-            f"[INFO] [Intake] Pipeline complete — "
-            f"analysis_id={analysis_id} language={language} framework={framework}"
-        )
-
-    except ValueError as exc:
-        print(f"[ERROR] [Intake] Validation error — analysis_id={analysis_id}: {exc}")
-        _mark_failed(analysis_id, str(exc))
-
-    except subprocess.CalledProcessError as exc:
-        msg = f"git clone failed: returncode={exc.returncode} stderr={exc.stderr}"
-        print(f"[ERROR] [Intake] {msg} — analysis_id={analysis_id}")
-        _mark_failed(analysis_id, msg)
-
-    except subprocess.TimeoutExpired:
-        msg = "git clone timed out"
-        print(f"[ERROR] [Intake] {msg} — analysis_id={analysis_id}")
-        _mark_failed(analysis_id, msg)
-
-    except RuntimeError as exc:
-        print(f"[ERROR] [Intake] Runtime error — analysis_id={analysis_id}: {exc}")
-        _mark_failed(analysis_id, str(exc))
-
-    except Exception as exc:
-        print(f"[ERROR] [Intake] Unexpected error — analysis_id={analysis_id}: {exc}")
-        _mark_failed(analysis_id, str(exc))
+    run_analysis_workflow(analysis_id, project_id, payload)
 
 
 def _extract_repo_name(repo_url: str) -> str:
@@ -295,4 +168,4 @@ def _mark_failed(analysis_id: int, error_message: str) -> None:
     webhook_service.send_status_update(
         analysis_id, "FAILED", error_message=error_message
     )
-    print(f"[INFO] [Intake] Status → FAILED (analysis_id={analysis_id})")
+    print(f"[INFO] [Intake] Status -> FAILED (analysis_id={analysis_id})")

@@ -9,7 +9,7 @@ This document provides a technical overview of the system workflows as they are 
 The system consists of three main components:
 1. **Frontend (React + Vite)**: Handles user authentication UI and project management. Currently, it has no user interface or service methods for running or viewing analyses.
 2. **MS1 Core API (Express.js + TypeScript)**: Exposes APIs for authentication and project management, handles the task queue (BullMQ), and manages business state in PostgreSQL.
-3. **MS2 Agent Service (FastAPI + Python)**: Exposes internal APIs for executing the repository intake pipeline (cloning, validation, metadata extraction) and manages local execution state.
+3. **MS2 Agent Service (FastAPI + Python)**: Exposes internal APIs, orchestrates the analysis pipeline via **LangGraph**, builds a repository inventory and AST parser representation, and ingests semantic data into a **Neo4j** knowledge graph.
 
 ### Overall Workflow Diagram
 ```
@@ -32,12 +32,12 @@ The system consists of three main components:
        [MS2 (FastAPI)]                                          │
              │                                                  │
              │ (FastAPI BackgroundTasks)                        │
-             ├──────────────────────────────────────────────────┤
-             ▼                                                  ▼
-     [AgentRun (MS2 DB)]                             [MS1 Webhook Endpoint]
-   - Create AgentRun record                     (POST /internal/webhook/analysis-status)
-   - Update AgentRun state
-   - Save local repository metadata
+             ▼                                                  │
+     [LangGraph Workflow] ──────────────────────────────────────┘
+      - AnalysisState (cloned path, sizes, metadata)
+      - Nodes: Intake ──> Parser ──> Neo4j Graph ──> Placeholder Steps
+      - Webhooks sent to MS1 Webhook Endpoint
+        (POST /internal/webhook/analysis-status)
 ```
 
 ---
@@ -92,7 +92,7 @@ Authentication is managed entirely by MS1 using JWT tokens and standard hashing.
 
 ---
 
-## 3. Project Creation Flow
+## Project Creation Flow
 
 Allows users to define target codebases for analysis.
 
@@ -128,22 +128,22 @@ Starts an analysis pipeline. (Note: Currently triggered via REST API endpoints d
 ### Analysis Pipeline Workflow
 ```
 [Client] ── POST /api/analysis/start ──► [AnalysisController.startAnalysis]
-                                                      │
-                                                      ▼
-                                           [AnalysisService.startAnalysis]
-                                                      │
-                                                      ├─► ProjectModel.findById (verify owner)
-                                                      ├─► AnalysisModel.create (inserts status 'QUEUED')
-                                                      │
-                                                      ▼
-                                                [BullMQ Queue]
-                                                      │
-                            ┌─────────────────────────┴────────────────────────┐
-                            ▼ (Success)                                        ▼ (Fail)
-                  Set bull_job_id in DB                              Update status → 'FAILED'
-                            │                                                  │
+                                                       │
+                                                       ▼
+                                            [AnalysisService.startAnalysis]
+                                                       │
+                                                       ├─► ProjectModel.findById (verify owner)
+                                                       ├─► AnalysisModel.create (inserts status 'QUEUED')
+                                                       │
+                                                       ▼
+                                                 [BullMQ Queue]
+                                                       │
+                             ┌─────────────────────────┴────────────────────────┐
+                             ▼ (Success)                                        ▼ (Fail)
+                   Set bull_job_id in DB                              Update status → 'FAILED'
+                             │                                                  │
 [Client] ◄── 201 Created (analysisId, status)                                  ▼
-                                                                     Return status 500 / 503
+                                                                      Return status 500 / 503
 ```
 
 - **Endpoints & Files Involved**:
@@ -201,7 +201,7 @@ Update status → 'DISPATCHED'   Update status → 'FAILED'
   - **Configuration**: [queue.ts](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms1-core-api/src/config/queue.ts)
 - **Producer**: `AnalysisService` (MS1 Core API) enqueues jobs.
 - **Consumer**: `AnalysisWorker` (MS1 Core API background process).
-  - **Worker Source**: [analysis.worker.ts](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms1-core-api/src/workers/analysis.worker.ts)
+- **Worker Source**: [analysis.worker.ts](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms1-core-api/src/workers/analysis.worker.ts)
   - Started on server initialization in [server.ts](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms1-core-api/src/server.ts).
   - Concurrency is configured to `5`.
 - **Inter-service Dispatcher**: `dispatchAnalysisToMs2` in [dispatch.service.ts](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms1-core-api/src/services/dispatch.service.ts).
@@ -210,36 +210,85 @@ Update status → 'DISPATCHED'   Update status → 'FAILED'
 
 ---
 
-## 6. Repository Intake Pipeline & Webhook Callback Flow (MS2)
+## 6. LangGraph Orchestration & Webhook Callback Flow (MS2)
 
-When MS2 receives an analysis job, it initiates the repository intake pipeline in a Python background thread and reports state transitions back to MS1 via HTTP webhooks.
+Upon receipt of an analysis request, MS2 executes the analysis pipeline using a LangGraph StateGraph orchestration layer. The workflow execution runs inside a FastAPI background task to ensure non-blocking dispatch response.
 
+### LangGraph Workflow Flowchart
+
+```mermaid
+graph TD
+    START([START]) --> Intake[RepositoryIntakeNode]
+    Intake --> Parser[RepositoryParserNode]
+    Parser --> Neo4j[KnowledgeGraphNode]
+    Neo4j --> Planner[PlannerNode: pass-through]
+    Planner --> Executor[ExecutionNode: pass-through]
+    Executor --> Reflection[ReflectionNode: pass-through]
+    Reflection --> Report[ReportNode: pass-through]
+    Report --> END([END])
 ```
-[MS1 Worker (dispatchService)] ── POST /internal/analysis/start ──► [MS2 (FastAPI internal router)]
-                                                                               │
-                                                                               ├─► background_tasks.add_task(intake)
-                                                                               ▼
-[MS1 Worker (dispatchService)] ◄── HTTP 200 { accepted: true } ────────────────┘
+
+### Detailed Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant MS1 as MS1 Core API (Express)
+    participant router as Router (MS2 FastAPI)
+    participant LG as LangGraph (StateGraph)
+    participant DB as Postgres (MS2 DB)
+    participant Parser as Parser Engine (AST)
+    participant Neo4j as Neo4j Graph DB
+
+    MS1->>router: POST /internal/analysis/start (payload)
+    Note over router: Launch background task
+    router-->>MS1: 202 Accepted { accepted: true }
+    
+    rect rgb(240, 248, 255)
+        Note over LG: Node 1: RepositoryIntakeNode
+        LG->>DB: create_agent_run()
+        LG->>MS1: POST /internal/webhook/analysis-status [CLONING]
+        Note over LG: Clone Repo using git clone
+        LG->>MS1: POST /internal/webhook/analysis-status [VALIDATING]
+        Note over LG: Validate files, detect metadata & size
+        LG->>DB: update_agent_run_metadata()
+        LG->>MS1: POST /internal/webhook/analysis-status [READY_FOR_PARSING]
+    end
+
+    rect rgb(255, 240, 245)
+        Note over LG: Node 2: RepositoryParserNode
+        LG->>Parser: Scan repository files & parse AST
+        Parser-->>LG: Produce parser_output.json
+        Note over LG: State updated to 'PARSED'
+    end
+
+    rect rgb(245, 255, 250)
+        Note over LG: Node 3: KnowledgeGraphNode
+        LG->>Neo4j: Initialize unique constraints and indexes
+        LG->>Neo4j: UNWIND & MERGE Nodes/Relationships (Batch size 500)
+        LG->>Neo4j: Validate Repository root node exists
+        Note over LG: State updated to 'GRAPH_BUILT'
+    end
+
+    rect rgb(255, 255, 240)
+        Note over LG: Nodes 4-7: Pass-through (Planner, Executor, Reflection, Report)
+        Note over LG: Simply logging pass-through execution
+    end
+
+    LG->>DB: update_agent_run_status('COMPLETED')
+    LG->>MS1: POST /internal/webhook/analysis-status [COMPLETED]
+    Note over LG: FinalState returned
 ```
 
 - **Endpoint**: `/internal/analysis/start`
 - **Route File**: [internal.py](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms2-agent/app/routers/internal.py)
-- **Intake Pipeline Service**: `repository_intake_service.py` in [repository_intake_service.py](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms2-agent/app/services/repository_intake_service.py)
-- **Execution Logic**:
-  1. FastAPI receives `AnalysisStartRequest`, starts `repository_intake_service.run(...)` as a `BackgroundTasks` task, and immediately returns a response with `accepted=True` to MS1.
-  2. In the background thread, the service performs the following synchronous pipeline stages:
-     - **Create AgentRun**: Inserts a new execution record inside MS2's separate database with status `'RECEIVED'`.
-     - **Cloning Webhook**: Sends a webhook POST request back to MS1 `/internal/webhook/analysis-status` with `status="CLONING"`. MS1 updates the `"Analysis"` table status.
-     - **Create workspace**: Resolves `env.WORKSPACE_ROOT` and creates an isolated directory `analysis-{analysisId}` via [workspace_service.py](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms2-agent/app/services/workspace_service.py).
-     - **Git clone**: Executes a shell subprocess `git clone --depth 1 <repo_url> <workspace_path>`.
-     - **Validating Webhook**: Sends a webhook POST request to MS1 with `status="VALIDATING"`. MS1 updates the `"Analysis"` table status.
-     - **Validate repository**: Checks that the clone directory exists, contains a `.git` metadata folder, contains non-git files, and is readable.
-     - **Language/Framework detection**: Calls `detect_language_and_framework` in [repository_discovery.py](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms2-agent/parser/repository_discovery.py). This is a **metadata-only detection** inspecting root project files (e.g. `package.json`, `requirements.txt`, `pom.xml`, etc.). Source code files are *never* read or parsed.
-     - **Compute repository size**: Traverses the directory structure and computes total size in bytes.
-     - **Persist metadata (MS2)**: Updates MS2's own database `agent_run` table record with local repository path, size, language, and framework metadata.
-     - **Ready Webhook**: Sends a webhook POST request to MS1 with `status="READY_FOR_PARSING"` and includes the metadata fields. MS1 updates the `"Analysis"` table status and saves the metadata.
-     - **Subsequent Stages**: Skips all parser, knowledge graph builder, AI reasoning (LangGraph), or reporting stages.
-  3. If any exception is thrown, the handler updates the local `agent_run` record status to `'FAILED'` and sends a webhook POST to MS1 with `status="FAILED"` and the error details.
+- **LangGraph Entry**: `run_analysis_workflow` in [invocation.py](file:///c:/Users/YASH/Desktop/LogicFlow-Guardian/ms2-agent/graphs/invocation.py)
+- **Node Execution Logic**:
+  1. **RepositoryIntakeNode**: Clones the repo, validates its structure, detects language and framework, computes size, updates PostgreSQL `agent_run` table, and sends status updates back to MS1 via webhook callbacks (`CLONING`, `VALIDATING`, `READY_FOR_PARSING`).
+  2. **RepositoryParserNode**: Scans directories, excludes build artifacts, parses source code using python `ast` (for `.py`) and regex (for `.js`/`.ts`), and saves a structured Intermediate Representation (IR) to `workspace/analysis-{id}/parser_output.json`.
+  3. **KnowledgeGraphNode**: Normalizes parser output into entity objects, applies unique constraints, bulk upserts nodes/relationships into Neo4j in batches of 500, and verifies the repository root node exists.
+  4. **Planner, Execution, Reflection, Report Nodes**: Future placeholders that log execution and pass the state through unmodified.
+  5. **Completion / Failure Handler**: Updates the database to `COMPLETED`/`FAILED` and notifies MS1 core API via webhook.
 
 ---
 
@@ -255,9 +304,12 @@ Under the Database per Service architecture, the services own separate PostgreSQ
 ### MS2 PostgreSQL Database
 - **`agent_run`**: Stores execution states, workspace directories, language/framework detection results, and error details for trace logging. MS2 never reads or writes to MS1 tables.
 
+### Neo4j Graph Database
+- Stores code entities (files, classes, functions, routes, middleware, imports, exports) and relationships (`CONTAINS`, `DECLARES`, `EXTENDS`, `IMPORTS`, `EXPORTS`, `HAS_ROUTE`, `OWNS`) to build a semantic map of code structure.
+
 ### Migration & Initialization Process
 - **MS1**: Managed via application-specific schema setups.
-- **MS2**: Uses a raw SQL migration script located at `app/config/migrations/001_create_agent_run.sql`. It is applied against the database specified in `MS2_DATABASE_URL` (connecting to `postgres_ms2` database).
+- **MS2**: Uses a raw SQL migration script located at `app/config/migrations/001_create_agent_run.sql`.
 - **Auto-Initialization**: When MS2 launches, the system runs startup connection verification and executes `Base.metadata.create_all` using SQLAlchemy ORM to verify or initialize the `agent_run` schema automatically.
 
 ---
@@ -266,9 +318,10 @@ Under the Database per Service architecture, the services own separate PostgreSQ
 
 - **Redis**: Used by MS1 via `ioredis` to back the BullMQ job queue. MS2 does not connect to or utilize Redis.
 - **WebSockets**: **None**. There is no WebSocket server or client implementation in the codebase.
-- **Webhooks**: **Yes**. Webhooks are now fully implemented for status communication from MS2 to MS1. MS1 validates the request with a shared webhook secret header (`X-Webhook-Secret`).
+- **Webhooks**: **Yes**. Webhooks are fully implemented for status communication from MS2 to MS1. MS1 validates the request with a shared webhook secret header (`X-Webhook-Secret`).
 - **Docker**: **None**. There is no Docker integration, containerization script, or Dockerode execution in the codebase (only a placeholder directory `infra/docker/` with a `.gitkeep` file).
-- **AI / LangGraph**: **None**. There are no AI models, agent workflows, prompt templates, or LangGraph libraries implemented.
+- **LangGraph**: **Yes**. The pipeline is fully orchestrated using LangGraph `StateGraph`, maintaining execution logs, metadata, and error structures.
+- **Neo4j Aura / Local**: Bolt driver connects to the local community database or Neo4j Aura cloud instance depending on `NEO4J_URI` configuration.
 
 ---
 
@@ -277,4 +330,4 @@ Under the Database per Service architecture, the services own separate PostgreSQ
 Discrepancies that remain (future features):
 - **Missing Tables**: Database documentation contains `Report`, `Endpoint`, `Finding`, and `TestCase` tables (`docs/schema.md`). These are future extensions and do not exist in the code yet.
 - **WebSockets**: Real-time notifications are documented to occur via WebSockets (`docs/architecture.md`), which are not implemented in the codebase yet.
-- **AI, LangGraph, & Neo4j**: System documentation details AI workflows, LangGraph nodes (Planner, Executor, Reporter, Reflector), and semantic graph writes to Neo4j. In the codebase, all these stages are currently hardcoded as skipped.
+- **Docker Validation & Run**: Future runner stages will run in Docker sandboxes. These are currently simulated or pass-through.
