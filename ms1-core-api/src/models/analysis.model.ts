@@ -1,6 +1,15 @@
 import { pool } from '../config/database';
 
-export type AnalysisStatus = 'QUEUED' | 'PROCESSING' | 'DISPATCHED' | 'COMPLETED' | 'FAILED';
+// Extend status to include the intake stages reported back by MS2 via webhook
+export type AnalysisStatus =
+  | 'QUEUED'
+  | 'PROCESSING'
+  | 'DISPATCHED'
+  | 'CLONING'
+  | 'VALIDATING'
+  | 'READY_FOR_PARSING'
+  | 'COMPLETED'
+  | 'FAILED';
 
 export interface Analysis {
   analysis_id?: number;
@@ -13,6 +22,14 @@ export interface Analysis {
   completed_at: Date | null;
   created_at?: Date;
   updated_at?: Date;
+}
+
+export interface RepoMetadata {
+  repository_path: string | null;
+  repository_name: string | null;
+  language: string | null;
+  framework: string | null;
+  repository_size: number | null;
 }
 
 export class AnalysisModel {
@@ -44,6 +61,7 @@ export class AnalysisModel {
 
   /**
    * Update the status of an Analysis record.
+   * Used by MS1's own worker and by the webhook handler when MS2 reports progress.
    */
   static async updateStatus(
     analysisId: number,
@@ -70,6 +88,35 @@ export class AnalysisModel {
       WHERE analysis_id = $${idx};
     `;
     await pool.query(query, values);
+  }
+
+  /**
+   * Persist repository intake metadata onto the Analysis record.
+   * Called by MS1's webhook handler when MS2 reports the completed intake.
+   * MS2 no longer writes this data directly — it sends it via webhook payload.
+   */
+  static async updateRepoMetadata(
+    analysisId: number,
+    metadata: RepoMetadata
+  ): Promise<void> {
+    const query = `
+      UPDATE "Analysis"
+      SET repository_path = $1,
+          repository_name = $2,
+          language        = $3,
+          framework       = $4,
+          repository_size = $5,
+          updated_at      = CURRENT_TIMESTAMP
+      WHERE analysis_id = $6;
+    `;
+    await pool.query(query, [
+      metadata.repository_path,
+      metadata.repository_name,
+      metadata.language,
+      metadata.framework,
+      metadata.repository_size,
+      analysisId,
+    ]);
   }
 
   /**

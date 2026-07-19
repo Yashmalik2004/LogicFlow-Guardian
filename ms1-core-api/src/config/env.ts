@@ -17,5 +17,8 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV as string,
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
   MS2_BASE_URL: process.env.MS2_BASE_URL || 'http://localhost:7000',
+  // Shared secret used to authenticate webhook calls from MS2.
+  // If set, MS1 will validate the X-Webhook-Secret header on incoming webhooks.
+  MS2_WEBHOOK_SECRET: process.env.MS2_WEBHOOK_SECRET || '',
 };
 

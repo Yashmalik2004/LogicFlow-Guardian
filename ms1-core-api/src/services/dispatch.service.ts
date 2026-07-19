@@ -1,10 +1,19 @@
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
+/**
+ * Full payload sent from MS1 to MS2 when dispatching an analysis job.
+ * MS2 must operate solely on this payload — it must NEVER query MS1's database.
+ */
 export interface DispatchPayload {
   analysisId: number;
   projectId: number;
   userId: number;
+  // Project data — MS2 uses these instead of querying MS1's database.
+  repoUrl: string;
+  repoName: string;
+  branch: string;
+  repositoryType: 'github' | 'zip';
 }
 
 export interface DispatchResult {
@@ -13,11 +22,15 @@ export interface DispatchResult {
 }
 
 const MAX_RETRIES = 3;
-const TIMEOUT_MS = 30_000; // 30 seconds per phase spec
+const TIMEOUT_MS = 30_000; // 30 seconds
 
 /**
  * Dispatch an analysis job to MS2 via POST /internal/analysis/start.
- * Implements retry with up to MAX_RETRIES attempts.
+ *
+ * The payload carries all project metadata needed by MS2 so that MS2
+ * never has to query MS1's database directly.
+ *
+ * Implements retry with up to MAX_RETRIES attempts and exponential back-off.
  * Throws on all failure conditions so the caller can handle FAILED status.
  */
 export async function dispatchAnalysisToMs2(
@@ -83,10 +96,6 @@ export async function dispatchAnalysisToMs2(
     } catch (err) {
       lastError = err as Error;
 
-      const isAborted =
-        lastError.name === 'AbortError' ||
-        lastError.message.includes('abort');
-
       logger.warn(
         `[Dispatch] Attempt ${attempt}/${MAX_RETRIES} failed — analysisId=${payload.analysisId} reason=${lastError.message}`
       );
@@ -95,7 +104,7 @@ export async function dispatchAnalysisToMs2(
         break;
       }
 
-      // Brief delay before retry (exponential: 1s, 2s)
+      // Exponential back-off: 1s, 2s before retries
       const delayMs = 1000 * attempt;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }

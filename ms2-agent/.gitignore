@@ -91,3 +91,9 @@ docker-compose.override.yml
 .cache/
 tmp/
 temp/
+
+# ==========================================
+# Repository Workspace (Phase 08+)
+# ==========================================
+
+workspace/

@@ -32,15 +32,18 @@ Build a production-ready AI-powered Business Logic Vulnerability Testing Platfor
 
 # Development Phases
 
+# Development Phases
+
 | Phase | Status | Description |
 |--------|--------|-------------|
 | Phase 01 | ✅ Completed | MS1 Foundation |
 | Phase 02 | ✅ Completed | MS2 Foundation |
 | Phase 03 | ✅ Completed | JWT Authentication |
 | Phase 04 | ✅ Completed | React Authentication |
-| Phase 05 | ⬜ Not Started | Project & Repository Management |
-| Phase 06 | ⬜ Not Started | Analysis Job Queue (Redis + BullMQ) |
-| Phase 07 | ⬜ Not Started | MS1 ↔ MS2 Job Communication |
+| Phase 05 | ✅ Completed | Project & Repository Management (Backend) |
+| Phase 05B | ✅ Completed | Project Dashboard UI |
+| Phase 06 | ✅ Not Started | Analysis Job Queue (Redis + BullMQ) |
+| Phase 07 | ✅ Not Started | MS1 ↔ MS2 Job Communication |
 | Phase 08 | ⬜ Not Started | Repository Storage & Retrieval |
 | Phase 09 | ⬜ Not Started | Repository Parser |
 | Phase 10 | ⬜ Not Started | Knowledge Graph Builder (Neo4j) |
@@ -49,11 +52,12 @@ Build a production-ready AI-powered Business Logic Vulnerability Testing Platfor
 | Phase 13 | ⬜ Not Started | Dynamic Test Executor |
 | Phase 14 | ⬜ Not Started | Reflection Agent |
 | Phase 15 | ⬜ Not Started | Report Generator |
-| Phase 16 | ⬜ Not Started | Webhook & Real-Time Progress Updates |
-| Phase 17 | ⬜ Not Started | Report Viewer & Knowledge Graph UI |
-| Phase 18 | ⬜ Not Started | Logging, Metrics & Observability |
-| Phase 19 | ⬜ Not Started | Deployment & CI/CD |
-| Phase 20 | ⬜ Not Started | Production Hardening & Performance |
+| Phase 16 | ⬜ Not Started | Webhooks & Real-Time Updates |
+| Phase 17 | ⬜ Not Started | Report Viewer APIs & UI |
+| Phase 18 | ⬜ Not Started | Knowledge Graph Visualization UI |
+| Phase 19 | ⬜ Not Started | Logging, Metrics & Observability |
+| Phase 20 | ⬜ Not Started | Deployment & CI/CD |
+| Phase 21 | ⬜ Not Started | Production Hardening & Performance |
 
 ---
 
@@ -69,7 +73,10 @@ Authentication
 Frontend Authentication
         │
         ▼
-Project & Repository Management
+Project Management
+        │
+        ▼
+Project Dashboard UI
         │
         ▼
 Analysis Queue
@@ -84,7 +91,7 @@ Repository Storage
 Repository Parser
         │
         ▼
-Knowledge Graph
+Knowledge Graph Builder
         │
         ▼
 Planner Agent
@@ -93,28 +100,30 @@ Planner Agent
 Docker Runner
         │
         ▼
-Dynamic Test Execution
+Dynamic Test Executor
         │
         ▼
 Reflection
         │
         ▼
-Report Generation
+Report Generator
         │
         ▼
 Realtime Updates
         │
-        ▼
-Frontend Report Viewer
-        │
-        ▼
-Observability
-        │
-        ▼
-Deployment
-        │
-        ▼
-Production Hardening
+        ├──────────────┐
+        ▼              ▼
+Report Viewer     Knowledge Graph UI
+        │              │
+        └──────┬───────┘
+               ▼
+      Observability
+               │
+               ▼
+      Deployment
+               │
+               ▼
+ Production Hardening
 ```
 
 ---
@@ -140,14 +149,17 @@ Responsible for:
 
 Responsible for:
 
+- Repository Retrieval
 - Repository Parsing
-- Static Analysis
-- Knowledge Graph
-- Planner Agent
-- Docker Execution
+- Framework Detection
+- Knowledge Graph Generation
+- Business Rule Extraction
+- LangGraph Planning
+- Docker Container Execution
+- Runtime Discovery
+- Dynamic Security Testing
 - Reflection
 - Report Generation
-
 ---
 
 ## Frontend
@@ -156,10 +168,12 @@ Responsible for:
 
 - Authentication
 - Dashboard
+- Project Management
 - Repository Upload
-- Analysis Progress
-- Knowledge Graph Viewer
+- Live Analysis Progress
 - Report Viewer
+- Knowledge Graph Visualization
+- User Settings
 
 ---
 

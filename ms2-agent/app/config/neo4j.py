@@ -17,9 +17,13 @@ def get_driver():
 
 def connect_neo4j() -> None:
     """Test Neo4j connectivity on startup."""
-    driver = get_driver()
-    driver.verify_connectivity()
-    print("[INFO] Neo4j connection established successfully.")
+    try:
+        driver = get_driver()
+        driver.verify_connectivity()
+        print("[INFO] Neo4j connection established successfully.")
+    except Exception as e:
+        print(f"[WARNING] Neo4j connectivity check failed: {e}")
+        print("[WARNING] ms2-agent will continue running, but Neo4j operations may fail.")
 
 
 def close_neo4j() -> None:
