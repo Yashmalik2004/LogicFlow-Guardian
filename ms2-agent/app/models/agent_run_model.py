@@ -65,8 +65,19 @@ class AgentRun(Base):
 # ---------------------------------------------------------------------------
 
 def create_agent_run(analysis_id: int, project_id: int) -> AgentRun:
-    """Insert a new AgentRun record with RECEIVED status."""
+    """Insert a new AgentRun record with RECEIVED status, or reset/return existing."""
     with SessionLocal() as session:
+        run = session.query(AgentRun).filter(AgentRun.analysis_id == analysis_id).first()
+        if run:
+            run.project_id = project_id
+            run.status = "RECEIVED"
+            run.started_at = datetime.now(timezone.utc)
+            run.completed_at = None
+            run.error_message = None
+            session.commit()
+            session.refresh(run)
+            return run
+
         run = AgentRun(
             analysis_id=analysis_id,
             project_id=project_id,
